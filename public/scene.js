@@ -11,6 +11,7 @@ const loading = document.getElementById('loading');
 const compact = window.matchMedia('(pointer: coarse), (max-width: 720px)').matches;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const mapId = new URLSearchParams(location.search).get('map') === 'hill' ? 'hill' : 'cliff';
+const requestedStop = new URLSearchParams(location.search).get('stop');
 
 function start() {
   const renderer = new T.WebGLRenderer({antialias:!compact, alpha:false, powerPreference:'high-performance'});
@@ -51,8 +52,8 @@ function start() {
   const portrait = window.innerHeight > window.innerWidth;
   const experience = createExperience({
     THREE:T,scene,camera,renderer,terrain,mapId,
-    spawn:mapId === 'hill' ? terrain.spawnFor(new URLSearchParams(location.search).get('stop')) : (portrait?{x:-13.3,z:19.5}:{x:-10.2,z:17.8}),
-    initialYaw:mapId === 'hill' ? 0 : (portrait?.165:.145),
+    spawn:mapId === 'hill' ? terrain.spawnFor(requestedStop) : (portrait?{x:-13.3,z:19.5}:{x:-10.2,z:17.8}),
+    initialYaw:mapId === 'hill' ? (requestedStop ? .20 : 0) : (portrait?.165:.145),
     view:mapId === 'hill'
       ? {distance:portrait?7.5:9.1,pitch:.13,height:1.65,aimHeight:1.53,scale:1.01,speed:3.65}
       : {distance:portrait?8.4:9.8,pitch:portrait?.135:.113,height:portrait?1.66:1.78,

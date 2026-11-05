@@ -179,23 +179,24 @@ function houses(scene,C,H){
   }
 }
 function campus(scene,C,H){
-  // Glazed upper-campus landmark and a broad stair: an evocative arrival moment.
-  const z=-88,base=H(C(z),z);
-  box(scene,[37.5,17.7,12.6],materials.pale,1.9,base+8.6,z);
-  box(scene,[29.3,15,.34],materials.glass,1.9,base+9.4,z+6.46);
+  // Upper-campus architecture is set into the hillside, not suspended
+  // across the road. Its broad facade remains visible as the hill crests.
+  const z=-89,xp=C(z)+29,base=H(xp,z);
+  box(scene,[37.5,16.4,12.6],materials.pale,xp,base+8.0,z);
+  box(scene,[29.3,14,.34],materials.glass,xp,base+8.6,z+6.46);
   for(let col=0;col<=18;col++){
-    const x=-12.65+col*1.615;
-    box(scene,[.145,15.18,.23],materials.pale,x,base+9.4,z+6.69);
+    const x=xp-14.55+col*1.615;
+    box(scene,[.145,14.15,.23],materials.pale,x,base+8.6,z+6.69);
   }
   for(let row=0;row<=7;row++)
-    box(scene,[29.4,.17,.23],materials.pale,1.9,base+1.93+row*2.09,z+6.7);
-  box(scene,[10.7,4.2,.40],materials.dark,1.9,base+2.59,z+6.8);
-  box(scene,[14.4,.43,3.5],materials.pale,1.9,base+5.46,z+8.15);
+    box(scene,[29.4,.17,.23],materials.pale,xp,base+1.72+row*1.94,z+6.7);
+  box(scene,[10.7,4.2,.40],materials.dark,xp,base+2.59,z+6.8);
+  box(scene,[14.4,.43,3.5],materials.pale,xp,base+5.46,z+8.15);
   for(let i=0;i<13;i++){
     const stepZ=z+8.3+i*.63;
-    box(scene,[12.9,.21,.63],materials.cap,1.9,base+.23+i*.2,stepZ);
+    box(scene,[12.9,.21,.63],materials.cap,xp,base+.23+i*.2,stepZ);
   }
-  box(scene,[39,.6,13.8],materials.pale,1.9,base+17.5,z);
+  box(scene,[39,.6,13.8],materials.pale,xp,base+16.4,z);
 }
 function shelter(scene,C,H){
   // Lower bus stop; an arched, mint-tinted covered path appears on the upper slope.
