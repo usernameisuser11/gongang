@@ -195,6 +195,29 @@ function upperStop(scene,C,H){
   for(const zz of [z-2.35,z+2.35])
     box(scene,mat.metal,x-2.75,y+1.62,zz,.09,3.17,.09);
   facadeLabel(scene,{name:'상명대학교 정류장',sub:'등굣길 도착 · 홍지문2길 20',x:x+.35,y:y+2.72,z:z-3.25,width:5.1,height:1.37,bg:'#315f79'});
+
+  // A compact stone-faced university arrival point on the *opposite side*
+  // of the road: public campus imagery shows a low wall with the school name
+  // and an adjoining security booth, not an elevated gate spanning the street.
+  const arrivalZ=-79,arrivalX=C(arrivalZ)+9.55,arrivalY=H(arrivalX,arrivalZ);
+  box(scene,mat.school,arrivalX,arrivalY+2.27,arrivalZ,1.10,4.54,7.25);
+  box(scene,mat.schoolRoof,arrivalX,arrivalY+4.59,arrivalZ,1.32,.22,7.48);
+  box(scene,mat.schoolDark,arrivalX-.66,arrivalY+.30,arrivalZ,.12,.63,7.40);
+  facadeLabel(scene,{
+    name:'상명대학교',sub:'SANGMYUNG UNIVERSITY',
+    x:arrivalX-.59,y:arrivalY+2.39,z:arrivalZ,width:6.20,height:2.19,
+    bg:'#d2d6d0',color:'#314b50',face:-1
+  });
+  // Low glazed security room with an inset roof and a modest hedge.
+  const boothX=arrivalX+3.12,boothZ=arrivalZ+6.0,boothY=H(boothX,boothZ);
+  box(scene,mat.schoolDark,boothX,boothY+1.66,boothZ,5.24,3.32,4.40);
+  box(scene,mat.glass,boothX-2.68,boothY+1.55,boothZ,.13,2.36,3.44);
+  box(scene,mat.schoolRoof,boothX,boothY+3.38,boothZ,5.94,.22,4.98);
+  for(let j=0;j<5;j++){
+    const zz=arrivalZ-4.8+j*1.35,xx=C(zz)+12.1,yy=H(xx,zz);
+    box(scene,mat.ocher,xx,yy+.42,zz,2.0,.65,.66);
+  }
+
   // A gentle glowing rest marker sits beyond the road edge.
   const circle=new T.Mesh(new T.RingGeometry(.83,1.03,40),
     new T.MeshBasicMaterial({color:'#ffdea7',transparent:true,opacity:.42,depthWrite:false,side:T.DoubleSide}));
