@@ -3,6 +3,7 @@ import { makeLand, makeFarCoast } from './land.js';
 import { makeHill } from './hill.js';
 import { makeMeadow, makeTree } from './flora.js';
 import { makeSky, makeWater, sunDirection } from './atmosphere.js';
+import { makeHillSky } from './hill-sky.js';
 import { createExperience } from './experience.js';
 import { installAmbientSound } from './ambient.js';
 
@@ -35,7 +36,8 @@ function start() {
   sunset.position.copy(sunDirection).multiplyScalar(70);
   sunset.position.y += 16;
   scene.add(sunset);
-  makeSky(scene,time);
+  if (mapId === 'hill') makeHillSky(scene,time);
+  else makeSky(scene,time);
   let terrain;
   if (mapId === 'hill') {
     terrain = makeHill(scene, time, compact);
