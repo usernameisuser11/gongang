@@ -1,7 +1,23 @@
 import { chromium } from 'playwright';
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+
+// Verify the complete walk is traversable before launching the expensive browser.
+const routeCode=readFileSync(new URL('../public/hill-route.js',import.meta.url),'utf8');
+const checkpointMatch=routeCode.match(/export const HILL_CHECKPOINTS = Object\.freeze\((\[[\s\S]*?\])\);/);
+assert.ok(checkpointMatch,'commute checkpoint list missing');
+const checkpoints=new Function('return '+checkpointMatch[1])();
+assert.deepEqual(checkpoints.map(p=>p.id),['start','elementary','yungane','budaetong','university']);
+assert.ok(checkpoints.every((p,i)=>i===0 || checkpoints[i-1].z>p.z),'landmark order');
+const hillCode=readFileSync(new URL('../public/hill.js',import.meta.url),'utf8');
+const routeLogic=hillCode.slice(hillCode.indexOf('const center ='),hillCode.indexOf('const c ='));
+assert.ok(routeLogic.includes('function canWalk'),'walkability logic missing');
+const {center,canWalk}=new Function(routeLogic+';return {center,canWalk};')();
+for(let z=77;z>=-67;z-=.5){
+  assert.ok(canWalk(center(z)-5.35,z),'walking path blocked at z='+z);
+}
+console.log('PASS: all five landmarks and a continuous pedestrian route');
 
 const base = 'http://127.0.0.1:8787';
 mkdirSync('artifacts', { recursive: true });
