@@ -199,13 +199,13 @@ function upperStop(scene,C,H){
   // A compact stone-faced university arrival point on the *opposite side*
   // of the road: public campus imagery shows a low wall with the school name
   // and an adjoining security booth, not an elevated gate spanning the street.
-  const arrivalZ=-79,arrivalX=C(arrivalZ)+9.55,arrivalY=H(arrivalX,arrivalZ);
-  box(scene,mat.school,arrivalX,arrivalY+2.27,arrivalZ,1.10,4.54,7.25);
-  box(scene,mat.schoolRoof,arrivalX,arrivalY+4.59,arrivalZ,1.32,.22,7.48);
+  const arrivalZ=-92,arrivalX=C(arrivalZ)+8.85,arrivalY=H(arrivalX,arrivalZ);
+  box(scene,mat.school,arrivalX,arrivalY+3.05,arrivalZ,1.10,6.10,7.25);
+  box(scene,mat.schoolRoof,arrivalX,arrivalY+6.20,arrivalZ,1.32,.22,7.48);
   box(scene,mat.schoolDark,arrivalX-.66,arrivalY+.30,arrivalZ,.12,.63,7.40);
   facadeLabel(scene,{
     name:'상명대학교',sub:'SANGMYUNG UNIVERSITY',
-    x:arrivalX-.59,y:arrivalY+2.39,z:arrivalZ,width:6.20,height:2.19,
+    x:arrivalX-.59,y:arrivalY+3.32,z:arrivalZ,width:6.20,height:2.19,
     bg:'#d2d6d0',color:'#314b50',face:-1
   });
   // Low glazed security room with an inset roof and a modest hedge.
