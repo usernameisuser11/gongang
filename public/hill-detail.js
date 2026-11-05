@@ -16,9 +16,31 @@ const materials={
   bench:new T.MeshStandardMaterial({color:'#8d755b',roughness:.96})
 };
 const V=(x,y,z)=>new T.Vector3(x,y,z);
+// Batch repeated windows, facade strips, stair treads and wall pieces by material.
+// Hundreds of individual draw calls would otherwise overwhelm mobile GPUs.
+const pendingBoxes=new Map();
 function box(scene,dim,mat,x,y,z){
-  const m=new T.Mesh(new T.BoxGeometry(...dim),mat);
-  m.position.set(x,y,z);m.receiveShadow=true;scene.add(m);return m;
+  if (![...dim,x,y,z].every(Number.isFinite)) return;
+  let batch=pendingBoxes.get(mat);
+  if (!batch){batch=[];pendingBoxes.set(mat,batch);}
+  batch.push({dim,x,y,z});
+}
+function flushBoxes(scene) {
+  const transform=new T.Object3D();
+  for(const [mat,batch] of pendingBoxes){
+    const mesh=new T.InstancedMesh(new T.BoxGeometry(1,1,1),mat,batch.length);
+    for(let i=0;i<batch.length;i++){
+      const {dim,x,y,z}=batch[i];
+      transform.position.set(x,y,z);
+      transform.scale.set(dim[0],dim[1],dim[2]);
+      transform.updateMatrix();
+      mesh.setMatrixAt(i,transform.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate=true;
+    mesh.receiveShadow=true;
+    scene.add(mesh);
+  }
+  pendingBoxes.clear();
 }
 function slopedPlane(scene,mat,x,z,height,width,depth=.76){
   const plane=new T.Mesh(new T.PlaneGeometry(width,depth),mat);
@@ -193,4 +215,5 @@ export function addHillDetails(scene,{center,heightAt}){
   houses(scene,center,heightAt);
   campus(scene,center,heightAt);
   shelter(scene,center,heightAt);
+  flushBoxes(scene);
 }
