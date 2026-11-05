@@ -275,15 +275,31 @@ function createPresence({ getState, onPlayers, onStatus, onReset }) {
   let full = false;
   let reconnectDelay = 1800;
   let lastCheck = 0;
-  let lastSent = 0;
+  let lastSent = -Infinity;
   let lastPayload = null;
+  let pendingAction = null;
+  const minSendGapMs = 45;
+  const stateTickMs = 60;
   const blocked = new Set();
   let latest = [];
 
-  function send(now = performance.now()) {
+  function send(now = performance.now(), urgent = false) {
     if (!online || socket?.readyState !== WebSocket.OPEN) return;
+    const elapsed = now - lastSent;
+    // Keep regular packets above the server's 40ms throttle, without losing actions.
+    if (elapsed < minSendGapMs) {
+      if (urgent && pendingAction === null) {
+        pendingAction = setTimeout(() => {
+          pendingAction = null;
+          send(performance.now(), true);
+        }, Math.ceil(minSendGapMs - elapsed) + 2);
+      }
+      return;
+    }
+    // Avoid buffering outdated movement states on a slow connection.
+    if (!urgent && socket.bufferedAmount > 4096) return;
     const payload = JSON.stringify({ type: 'state', ...getState() });
-    if (payload === lastPayload && now - lastSent < 25000) return;
+    if (payload === lastPayload && elapsed < 25000) return;
     socket.send(payload);
     lastPayload = payload;
     lastSent = now;
@@ -305,6 +321,9 @@ function createPresence({ getState, onPlayers, onStatus, onReset }) {
         online = true;
         reconnectDelay = 1800;
         lastPayload = null;
+        lastSent = -Infinity;
+        clearTimeout(pendingAction);
+        pendingAction = null;
         onStatus('online');
         send();
       } else if (message.type === 'snapshot') {
@@ -317,6 +336,8 @@ function createPresence({ getState, onPlayers, onStatus, onReset }) {
     });
     connection.addEventListener('close', () => {
       if (socket !== connection) return;
+      clearTimeout(pendingAction);
+      pendingAction = null;
       socket = null;
       online = false;
       latest = [];
@@ -335,6 +356,8 @@ function createPresence({ getState, onPlayers, onStatus, onReset }) {
       solo = value || !available;
       if (solo) {
         clearTimeout(reconnect);
+        clearTimeout(pendingAction);
+        pendingAction = null;
         const connection = socket;
         socket = null;
         online = false;
@@ -348,9 +371,12 @@ function createPresence({ getState, onPlayers, onStatus, onReset }) {
     },
     update() {
       const now = performance.now();
-      if (now - lastCheck < 96) return;
+      if (now - lastCheck < stateTickMs) return;
       lastCheck = now;
       send(now);
+    },
+    sendNow() {
+      send(performance.now(), true);
     },
     toggleBlock(id) {
       if (blocked.has(id)) blocked.delete(id);
@@ -440,6 +466,8 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       local.signal(elapsed);
       signal++;
     }
+    // Posture and gestures are sent immediately, independently of movement ticks.
+    presence.sendNow();
   }
   for (const button of actionButtons) button.addEventListener('click', () => doAction(button.dataset.action));
 
@@ -735,7 +763,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     initialized = true;
     camera.lookAt(aim);
 
-    const interpolation = 1 - Math.exp(-dt * 11);
+    const interpolation = 1 - Math.exp(-dt * 18);
     for (const { model, target } of remote.values()) {
       const group = model.group;
       group.position.x += (target.x - group.position.x) * interpolation;
@@ -743,7 +771,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       group.position.y = terrain.heightAt(group.position.x, group.position.z);
       const turn = target.yaw - group.rotation.y;
       group.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * interpolation;
-      model.animate(target.pose, time, dt);
+      model.animate(target.pose, time, Math.min(dt * 1.45, 0.075));
     }
     presence.update();
   }

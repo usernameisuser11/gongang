@@ -100,11 +100,18 @@ export class PresenceRoom extends DurableObject {
 
   webSocketMessage(socket, message) {
     const now = Date.now();
-    if (socket.readyState !== WebSocket.OPEN || now - (this.#lastMessage.get(socket) ?? 0) < 40) return;
-    this.#lastMessage.set(socket, now);
+    if (socket.readyState !== WebSocket.OPEN) return;
     const state = parsePresenceState(message);
     const peer = socket.deserializeAttachment();
     if (!state || !peer) return;
+    // An action must not be discarded just because a position update arrived recently.
+    const actionChanged = peer.state && (
+      state.pose !== peer.state.pose ||
+      state.gesture !== peer.state.gesture ||
+      state.signal !== peer.state.signal
+    );
+    if (!actionChanged && now - (this.#lastMessage.get(socket) ?? 0) < 40) return;
+    this.#lastMessage.set(socket, now);
 
     if (peer.state) {
       if (sameState(peer.state, state)) return;
