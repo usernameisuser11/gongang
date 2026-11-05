@@ -120,7 +120,9 @@ function plants(scene,compact) {
   const temp=new T.Object3D(), tint=new T.Color();
   for(let k=0;k<treeCount;k++){
     const z=-67+random()*120,side=k%2?-1:1;
-    const x=center(z)+side*(9.7+Math.pow(random(),1.65)*23);
+    // Keep the start view and the '공강' HUD free of close canopy occlusion.
+    const offset=9.7+Math.pow(random(),1.65)*23;
+    const x=center(z)+side*(z>22&&side===-1?Math.max(26,offset):offset);
     const h=groundHeight(x,z);
     const size=.84+random()*.85;
     temp.position.set(x,h+1.65*size,z);
@@ -141,7 +143,7 @@ function plants(scene,compact) {
       const cz=z+Math.sin(a)*radial*.74*size;
       temp.position.set(cx,h+(3.20+(j%8)*.23+random()*.33)*size,cz);
       temp.rotation.set(random()*.4,random()*6.28,random()*.45);
-      temp.scale.set((.68+random()*.5)*size,(.73+random()*.45)*size,(.69+random()*.49)*size);
+      temp.scale.set((.44+random()*.33)*size,(.49+random()*.32)*size,(.45+random()*.34)*size);
       temp.updateMatrix();leaves.setMatrixAt(k*foliagePerTree+j,temp.matrix);
       tint.set(['#456b58','#6d885f','#8c9b73','#536a59','#a3a178'][Math.floor(random()*5)]);
       leaves.setColorAt(k*foliagePerTree+j,tint);
