@@ -235,6 +235,7 @@ function buildInterface(root) {
       <p class="cliff-tagline">수업과 수업 사이, 상명인을 위한 작은 쉼터</p>
       <p class="cliff-status" data-status role="status">잠시 쉬어가는 중</p>
       <label class="cliff-world">풍경 <select data-world aria-label="풍경 선택"><option value="cliff">바람의 절벽</option><option value="hill">상명의 언덕길</option></select></label>
+      <div class="cliff-journey" data-journey hidden aria-live="off"><span data-journey-label>등굣길 시작</span><div class="cliff-journey-track"><i data-journey-fill></i></div><small data-journey-next>언덕 아래</small></div>
     </header>
     <div class="cliff-hint" data-hint></div>
     <button class="cliff-icon cliff-settings" type="button" data-settings aria-label="동행 및 조작 설정" aria-expanded="false">${icon('settings')}</button>
@@ -396,6 +397,27 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const ui = buildInterface(root);
   const panel = ui.querySelector('[data-panel]');
   const settings = ui.querySelector('[data-settings]');
+  const journey = ui.querySelector('[data-journey]');
+  const journeyLabel = ui.querySelector('[data-journey-label]');
+  const journeyNext = ui.querySelector('[data-journey-next]');
+  const journeyFill = ui.querySelector('[data-journey-fill]');
+  const stops = mapId === 'hill' ? terrain.checkpoints ?? [] : [];
+  journey.hidden = stops.length === 0;
+  let lastJourneyIndex = -1;
+  function updateJourney(currentZ){
+    if(!stops.length)return;
+    let reached=0;
+    for(let i=1;i<stops.length;i++)if(currentZ<=stops[i].z+2.5)reached=i;
+    const next=stops[Math.min(reached+1,stops.length-1)];
+    if(reached!==lastJourneyIndex){
+      lastJourneyIndex=reached;
+      journeyLabel.textContent=`${reached+1}/${stops.length} · ${stops[reached].name}`;
+      journeyNext.textContent=reached===stops.length-1?'학교 정류장 도착!':`다음 · ${next.name}`;
+    }
+    const total=stops[0].z-stops[stops.length-1].z;
+    const percent=Math.min(100,Math.max(0,(stops[0].z-currentZ)/total*100));
+    journeyFill.style.width=`${percent.toFixed(1)}%`;
+  }
   const worldSelect = ui.querySelector('[data-world]');
   worldSelect.value = mapId;
   worldSelect.addEventListener('change', () => {
@@ -751,6 +773,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     }
 
     const floor = terrain.heightAt(x, z);
+    updateJourney(z);
     local.group.position.set(x, floor, z);
     local.group.rotation.y = bodyYaw;
     local.animate(pose, time, dt);

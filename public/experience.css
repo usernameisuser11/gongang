@@ -297,3 +297,37 @@
 @media (prefers-reduced-motion: reduce) {
   .cliff-ui * { transition-duration: 0ms !important; }
 }
+
+/* Small guided-walk progress indicator shown only in the hill world. */
+.cliff-journey {
+  margin-top: 11px;
+  width: min(265px, calc(100vw - 42px));
+  padding: 9px 12px;
+  border: 1px solid rgba(255,235,204,.23);
+  border-radius: 12px;
+  background: rgba(34,39,37,.64);
+  backdrop-filter: blur(9px);
+  font-size: 11px;
+  color: #f5e7d3;
+  box-sizing: border-box;
+}
+.cliff-journey-track {
+  position: relative;
+  overflow: hidden;
+  margin: 8px 0 6px;
+  height: 4px;
+  border-radius: 20px;
+  background: rgba(237,228,212,.23);
+}
+.cliff-journey-track i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: #eac99a;
+  transition: width 250ms ease-out;
+}
+.cliff-journey small {font-size:10px; color:var(--cliff-muted);}
+@media (max-width: 600px) {
+  .cliff-journey {width:min(224px,calc(100vw - 35px)); padding:7px 10px;}
+}

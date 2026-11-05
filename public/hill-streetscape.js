@@ -116,7 +116,7 @@ function retainingWall(scene,C,H,compact){
   const mat=new T.MeshStandardMaterial({map:masonryTexture(),roughness:1,side:T.DoubleSide});
   const cap=new T.MeshStandardMaterial({color:'#a8aaa1',roughness:1});
   const rail=new T.MeshStandardMaterial({color:'#576b63',roughness:.68,metalness:.26});
-  const along=[[-1,52,5,8.35,2.08],[1,49,14,8.65,1.52],[1,10,-33,9.65,2.18]];
+  const along=[[-1,-21,-50,8.85,2.08],[1,49,14,8.65,1.52],[1,10,-33,9.65,2.18]];
   const posts=[];
   for(const [side,begin,end,offset,wallH] of along){
     const verts=[],uv=[],inds=[],capVerts=[],capUV=[],capInd=[];

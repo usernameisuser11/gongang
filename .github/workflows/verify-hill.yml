@@ -29,6 +29,7 @@ jobs:
           node --check public/hill.js
           node --check public/hill-detail.js
           node --check public/hill-streetscape.js
+          node --check public/hill-route.js
           node --check public/scene.js
           node --check public/experience.js
           node --check cloudflare/worker.mjs

@@ -1,10 +1,11 @@
 import * as T from 'three';
 import { fbm, noise, rng, smooth } from './nature.js';
 import { addHillDetails } from './hill-detail.js';
+import { HILL_CHECKPOINTS, addHillCommute } from './hill-route.js';
 import { addHillStreetscape, streetSurfaceMaterials } from './hill-streetscape.js';
 
 // A painterly reinterpretation of the memorable Sangmyung uphill walk, not a survey map.
-const edgeA = -112, edgeB = 78;
+const edgeA = -112, edgeB = 108;
 const center = z => 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7);
 const climb = z => 7.2 + (49-z)*.252 + .36*Math.sin((z+9)*.053);
 
@@ -17,7 +18,7 @@ function groundHeight(x,z) {
 function canWalk(x,z) {
   // Keep the parked 7016 bus solid while the pedestrian path remains open.
   const busZ=-38, busX=center(busZ)+1.85;
-  return z > -76 && z < 55 && Math.abs(x-center(z)) < 8.12
+  return z > -76 && z < 83 && Math.abs(x-center(z)) < 8.12
     && !(Math.abs(x-busX)<1.30 && Math.abs(z-busZ)<3.52);
 }
 const c = v => new T.Color(v);
@@ -77,12 +78,12 @@ function makeRoad(scene) {
   const pavement=surface.sidewalk;
   const line=new T.MeshBasicMaterial({color:'#d8c49a',side:T.DoubleSide});
   const border=new T.MeshStandardMaterial({color:'#b6ac9b',roughness:.95,side:T.DoubleSide});
-  ribbon(scene,-3.95,3.95,-76,55,road,.095);
-  ribbon(scene,-6.7,-4.2,-76,55,pavement,.16);
-  ribbon(scene,4.2,6.7,-76,55,pavement,.16);
-  ribbon(scene,-4.20,-4.07,-76,55,border,.22);
-  ribbon(scene,4.07,4.20,-76,55,border,.22);
-  ribbon(scene,-.075,.075,-76,55,line,.111);
+  ribbon(scene,-3.95,3.95,-76,86,road,.095);
+  ribbon(scene,-6.7,-4.2,-76,86,pavement,.16);
+  ribbon(scene,4.2,6.7,-76,86,pavement,.16);
+  ribbon(scene,-4.20,-4.07,-76,86,border,.22);
+  ribbon(scene,4.07,4.20,-76,86,border,.22);
+  ribbon(scene,-.075,.075,-76,86,line,.111);
   // Soft roadside stones and garden strips break up the straight road edges.
   const random=rng(718);
   const stones=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),new T.MeshStandardMaterial({color:'#858579',roughness:1}),160);
@@ -122,7 +123,9 @@ function plants(scene,compact) {
     const z=-67+random()*120,side=k%2?-1:1;
     // Keep the start view and the '공강' HUD free of close canopy occlusion.
     const offset=9.7+Math.pow(random(),1.65)*23;
-    const x=center(z)+side*(z>22&&side===-1?Math.max(26,offset):offset);
+    const cleared=side===-1 && z>26 && z<75 ? Math.max(36,offset)
+      : side===-1 && z>=7 && z<=26 ? Math.max(28,offset) : offset;
+    const x=center(z)+side*cleared;
     const h=groundHeight(x,z);
     const size=.84+random()*.85;
     temp.position.set(x,h+1.65*size,z);
@@ -224,13 +227,15 @@ export function makeHill(scene,time,compact=false) {
   plants(scene,compact);
   addHillDetails(scene,{center,heightAt:groundHeight});
   addHillStreetscape(scene,{center,heightAt:groundHeight,compact});
+  addHillCommute(scene,{center,heightAt:groundHeight});
   // Keep travelers' feet aligned to the raised asphalt and pavement meshes.
   const walkingHeight=(x,z)=>{
     const offset=Math.abs(x-center(z));
     return groundHeight(x,z)+(offset<=3.95?.095:offset>=4.2&&offset<=6.7?.16:.02);
   };
   const terrain={
-    spawn:{x:center(43)-5.35,z:43},
+    spawn:{x:center(77)-5.35,z:77},
+    checkpoints:HILL_CHECKPOINTS,
     heightAt:walkingHeight,canWalk,
     pick(raycaster){return raycaster.intersectObject(surface,false)[0]?.point??null}
   };

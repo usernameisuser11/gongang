@@ -135,7 +135,7 @@ function houses(scene,C,H){
   const frameDark=new T.MeshStandardMaterial({color:'#474946',roughness:.96});
   // Irregular homes overlooking the road; no mirrored symmetrical housing rows.
   const rows=[
-    [43,1,15.8,8,12,9.8],[30,-1,14.4,8,11.8,11.4],
+    [43,1,15.8,8,12,9.8],[-5,-1,15.2,8,11.8,11.4],
     [4,1,16.5,9,10.7,12.4],[-20,-1,15.2,10,12.1,13.8],
     [-39,1,16.8,9.1,12.3,13.2],[-56,-1,22.9,10,11.3,12.5]
   ];
@@ -199,17 +199,9 @@ function campus(scene,C,H){
 }
 function shelter(scene,C,H){
   // Lower bus stop; an arched, mint-tinted covered path appears on the upper slope.
-  const z=36.5,x=C(z)-7.7,y=H(x,z);
+  // Distinct start and final bus stops now live in hill-route.js.
+  // This covered pedestrian stretch remains midway up the incline.
   const mint=new T.MeshPhysicalMaterial({color:'#80a99f',roughness:.22,metalness:.12,transparent:true,opacity:.37,depthWrite:false,side:T.DoubleSide});
-  box(scene,[.12,3.05,.12],materials.iron,x,y+1.53,z);
-  box(scene,[2.6,.15,3.1],materials.iron,x-1.25,y+3.11,z);
-  box(scene,[.10,2.03,2.8],mint,x-2.5,y+2.12,z);
-  box(scene,[2,.14,.5],materials.bench,x-1.38,y+.68,z);
-  label(scene,'상명대입구',x+.12,y+2.62,z,2.1,.56);
-  const topZ=-58,topX=C(topZ)-7.45;
-  box(scene,[.095,3,.095],materials.iron,topX,H(topX,topZ)+1.5,topZ);
-  label(scene,'상명대 정문',topX,H(topX,topZ)+2.85,topZ,2.3,.58);
-
   const verts=[],inds=[],along=28,across=12,z0=-52,z1=-36;
   for(let j=0;j<=along;j++){
     const zz=z0+(z1-z0)*j/along,y0=H(C(zz)+8.1,zz);
