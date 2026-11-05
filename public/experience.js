@@ -82,11 +82,13 @@ function createTraveler(THREE, color) {
   coatEdge.castShadow = false;
 
   oval(torso, tunicMaterial, 0, 0.19, 0, 0.123, 0.214, 0.091);
-  const hood = oval(torso, cloakMaterial, 0, 0.478, 0.023, 0.128, 0.151, 0.13);
+  const hood = oval(torso, cloakMaterial, 0, 0.473, 0.028, 0.115, 0.139, 0.121);
   hood.rotation.x = 0.14;
   oval(torso, trimMaterial, 0, 0.468, -0.07, 0.095, 0.112, 0.049);
-  oval(torso, interiorMaterial, 0, 0.47, -0.084, 0.085, 0.103, 0.046);
-  oval(torso, faceMaterial, 0, 0.447, -0.119, 0.055, 0.066, 0.027);
+  oval(torso, interiorMaterial, 0, 0.47, -0.084, 0.092, 0.105, 0.046);
+  oval(torso, faceMaterial, 0, 0.447, -0.124, 0.070, 0.076, 0.031);
+  // A small natural hair fringe and a narrower hood make the traveler read as human.
+  oval(torso, tunicMaterial, 0, 0.514, -0.137, 0.074, 0.022, 0.021);
   const collar = mesh(torso, new THREE.TorusGeometry(0.105, 0.023, 6, 20), trimMaterial, 0, 0.335, 0.003);
   collar.rotation.x = Math.PI * 0.5;
   collar.scale.y = 0.84;
@@ -231,7 +233,8 @@ function buildInterface(root) {
     <header class="cliff-title">
       <h1>공강</h1>
       <p class="cliff-tagline">수업과 수업 사이, 상명인을 위한 작은 쉼터</p>
-      <p class="cliff-status" data-status role="status">해 질 녘 · 바다를 따라</p>
+      <p class="cliff-status" data-status role="status">잠시 쉬어가는 중</p>
+      <label class="cliff-world">풍경 <select data-world aria-label="풍경 선택"><option value="cliff">바람의 절벽</option><option value="hill">상명의 언덕길</option></select></label>
     </header>
     <div class="cliff-hint" data-hint></div>
     <button class="cliff-icon cliff-settings" type="button" data-settings aria-label="동행 및 조작 설정" aria-expanded="false">${icon('settings')}</button>
@@ -265,7 +268,7 @@ function storePreference(key, value) {
   try { localStorage.setItem(`baramui.${key}`, String(value)); } catch { /* Storage can be disabled. */ }
 }
 
-function createPresence({ getState, onPlayers, onStatus, onReset }) {
+function createPresence({ getState, onPlayers, onStatus, onReset, mapId = 'cliff' }) {
   const available = /^https?:$/.test(location.protocol);
   let socket = null;
   let reconnect = null;
@@ -310,6 +313,7 @@ function createPresence({ getState, onPlayers, onStatus, onReset }) {
     full = false;
     onStatus('connecting');
     const url = new URL('/presence', location.href);
+    url.searchParams.set('map', mapId);
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const connection = new WebSocket(url);
     socket = connection;
@@ -386,12 +390,19 @@ function createPresence({ getState, onPlayers, onStatus, onReset }) {
   };
 }
 
-export function createExperience({ THREE, scene, camera, renderer, terrain, spawn, initialYaw = 0, root = document.body, view = {} }) {
+export function createExperience({ THREE, scene, camera, renderer, terrain, spawn, initialYaw = 0, root = document.body, view = {}, mapId = 'cliff' }) {
   const element = renderer.domElement;
   element.style.touchAction = 'none';
   const ui = buildInterface(root);
   const panel = ui.querySelector('[data-panel]');
   const settings = ui.querySelector('[data-settings]');
+  const worldSelect = ui.querySelector('[data-world]');
+  worldSelect.value = mapId;
+  worldSelect.addEventListener('change', () => {
+    const next = new URL(location.href);
+    next.searchParams.set('map', worldSelect.value);
+    location.assign(next.href);
+  });
   const hint = ui.querySelector('[data-hint]');
   const stick = ui.querySelector('[data-stick]');
   const stickThumb = stick.querySelector('span');
@@ -607,9 +618,10 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const onlineText = ui.querySelector('[data-online]');
   const statusText = ui.querySelector('[data-status]');
   function refreshStatus() {
+    const worldName = mapId === 'hill' ? '상명의 언덕길' : '해 질 녘';
     statusText.textContent = transportStatus === 'online' && remote.size
-      ? `해 질 녘 · ${remote.size}명과 함께`
-      : `해 질 녘 · ${statusCopy[transportStatus][0]}`;
+      ? `${worldName} · ${remote.size}명과 함께`
+      : `${worldName} · ${statusCopy[transportStatus][0]}`;
     onlineText.textContent = statusCopy[transportStatus][1];
   }
 
@@ -662,6 +674,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   }
 
   const presence = createPresence({
+    mapId,
     getState: () => ({ x, z, yaw: Math.atan2(Math.sin(bodyYaw), Math.cos(bodyYaw)), pose, gesture, signal }),
     onPlayers: updatePlayers,
     onStatus: (value) => { transportStatus = value; refreshStatus(); },

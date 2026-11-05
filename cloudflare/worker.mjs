@@ -2,7 +2,8 @@ import { DurableObject } from 'cloudflare:workers';
 import { parsePresenceState, ROOM_CAPACITY } from '../shared/presence-state.mjs';
 
 const handshakeMs = 12000;
-const roomName = 'gonggang-main';
+// Only known worlds get rooms; unknown values fall back to the original cliff.
+const roomName = (map) => map === 'hill' ? 'gonggang-hill' : 'gonggang-main';
 
 function reply(message, status, extraHeaders = {}) {
   return new Response(message, { status, headers: { 'Cache-Control': 'no-store', ...extraHeaders } });
@@ -72,7 +73,7 @@ export default {
       if (request.method !== 'GET') return reply(null, 405, { Allow: 'GET' });
       if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return reply('Expected WebSocket', 426);
       if (request.headers.get('Origin') !== url.origin) return reply('Forbidden', 403);
-      return env.PRESENCE_ROOM.getByName(roomName).fetch(request);
+      return env.PRESENCE_ROOM.getByName(roomName(url.searchParams.get('map'))).fetch(request);
     }
     return env.ASSETS.fetch(request);
   }
