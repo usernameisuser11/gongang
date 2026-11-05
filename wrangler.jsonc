@@ -7,7 +7,7 @@
     {
       "binding": "VISITS",
       "database_name": "gonggang-visits",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "a73c08b0-c72a-48b8-a226-4d8803865141",
       "migrations_dir": "d1/migrations"
     }
   ],
