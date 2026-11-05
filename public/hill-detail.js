@@ -78,7 +78,7 @@ function cylinderBetween(scene,a,b,r=.046){
 }
 function markings(scene,C,H){
   // The incline's large white road warnings and two compact pedestrian crossings.
-  for(const [text,z,width] of [['서행',27,4.3],['7016',-19,4.55],['상명대',-48,4.5]]){
+  for(const [text,z,width] of [['7016',27,4.3],['서대문08',-18,4.55],['상명대',-48,4.5]]){
     const mat=new T.MeshBasicMaterial({map:textTexture(text),transparent:true,depthWrite:false,side:T.DoubleSide});
     slopedPlane(scene,mat,C(z),z,H(C(z),z)+.145,width,2.3);
   }
@@ -156,6 +156,19 @@ function houses(scene,C,H){
       }
     }
     box(scene,[.2,2.03,1.14],materials.dark,face-side*.06,bottom+1.08,z);
+    // Front and rear window bays: visible when the road bends toward the houses.
+    for(const end of [-1,1]){
+      const frontZ=z+end*(d*.5+.055);
+      for(let row=0;row<Math.max(2,Math.floor((h-1)/2.3));row++){
+        for(let col=0;col<Math.min(4,Math.floor((w-1)/1.65));col++){
+          const xWindow=x+(col-1.5)*1.62;
+          const yWindow=bottom+1.76+row*2.16;
+          box(scene,[1.18,1.33,.17],materials.pale,xWindow,yWindow,frontZ);
+          box(scene,[1.0,1.13,.20],glass,xWindow,yWindow,frontZ+end*.035);
+          box(scene,[1.05,.09,.24],frameDark,xWindow,yWindow-0.62,frontZ+end*.065);
+        }
+      }
+    }
     box(scene,[.52,.15,2.0],materials.roof,face-side*.25,bottom+2.35,z);
     // Small awning, concrete sill and doorway shadow make each facade less boxlike.
     box(scene,[.28,.17,2.21],foundations,face-side*.10,bottom+.30,z);

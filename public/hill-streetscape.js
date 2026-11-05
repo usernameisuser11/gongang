@@ -116,22 +116,21 @@ function retainingWall(scene,C,H,compact){
   const mat=new T.MeshStandardMaterial({map:masonryTexture(),roughness:1,side:T.DoubleSide});
   const cap=new T.MeshStandardMaterial({color:'#a8aaa1',roughness:1});
   const rail=new T.MeshStandardMaterial({color:'#576b63',roughness:.68,metalness:.26});
-  const along=[[-1,52,5,8.85,1.95],[1,49,14,9.35,1.43],[1,10,-33,10.15,2.15]];
-  const caps=[],posts=[],bars=[];
+  const along=[[-1,52,5,8.35,2.08],[1,49,14,8.65,1.52],[1,10,-33,9.65,2.18]];
+  const posts=[];
   for(const [side,begin,end,offset,wallH] of along){
-    const verts=[],uv=[],inds=[];
+    const verts=[],uv=[],inds=[],capVerts=[],capUV=[],capInd=[];
     const count=Math.ceil((begin-end)/1.6);
     for(let i=0;i<=count;i++){
       const z=begin+(end-begin)*i/count,x=C(z)+side*offset;
       const base=H(x,z),top=base+wallH+.08*Math.sin(z*.35);
       verts.push(x,base-.20,z,x,top,z);
       uv.push(i*.46,0,i*.46,wallH*.75);
+      capVerts.push(x-.22,top+.025,z,x+.22,top+.025,z);
+      capUV.push(0,i*.33,1,i*.33);
       if(i<count){
         const p=i*2;inds.push(p,p+1,p+2,p+1,p+3,p+2);
-      }
-      if(i<count){
-        const midZ=z+(end-begin)/(count*2),midX=C(midZ)+side*offset,midY=H(midX,midZ)+wallH;
-        caps.push({x:midX,y:midY+.06,z:midZ,w:.4,h:.14,d:Math.abs((end-begin)/count)+.06});
+        capInd.push(p,p+2,p+1,p+1,p+2,p+3);
       }
       if(i%4===0){
         posts.push({x,y:top+.44,z,w:.07,h:.88,d:.07});
@@ -142,6 +141,11 @@ function retainingWall(scene,C,H,compact){
     g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
     g.setIndex(inds);g.computeVertexNormals();
     const wall=mesh(scene,g,mat);wall.receiveShadow=true;
+    const capGeom=new T.BufferGeometry();
+    capGeom.setAttribute('position',new T.Float32BufferAttribute(capVerts,3));
+    capGeom.setAttribute('uv',new T.Float32BufferAttribute(capUV,2));
+    capGeom.setIndex(capInd);capGeom.computeVertexNormals();
+    mesh(scene,capGeom,cap);
     for(let k=4;k<=count;k+=4){
       const za=begin+(end-begin)*(k-4)/count,zb=begin+(end-begin)*k/count;
       const aa=new T.Vector3(C(za)+side*offset,H(C(za)+side*offset,za)+wallH+.78,za);
@@ -150,7 +154,7 @@ function retainingWall(scene,C,H,compact){
       seg.position.copy(aa).addScaledVector(d,.5);seg.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d.normalize());scene.add(seg);
     }
   }
-  instanced(scene,cap,caps);instanced(scene,rail,posts);
+  instanced(scene,rail,posts);
 }
 function lampsAndDrains(scene,C,H){
   const iron=new T.MeshStandardMaterial({color:'#435850',metalness:.38,roughness:.62});
@@ -169,10 +173,10 @@ function lampsAndDrains(scene,C,H){
     const z=52-i*4.8,side=i%2?-1:1,x=C(z)+side*3.76,base=H(x,z)+.112;
     drains.push({x,y:base,z,w:.26,h:.009,d:.39});
   }
-  for(let i=0;i<29;i++){
-    const z=45-i*4.1;
-    const x=C(z)-6.94;
-    bollards.push({x,y:H(x,z)+.39,z,w:.09,h:.78,d:.09});
+  // Sparse low bollards only near the crossings, not a line of tall black sticks.
+  for(const z of [49,47,45,-55,-57,-59]){
+    const x=C(z)-6.95;
+    bollards.push({x,y:H(x,z)+.26,z,w:.10,h:.52,d:.10});
   }
   instanced(scene,iron,posts.concat(heads).concat(bollards));
   instanced(scene,lamp,glows);
@@ -196,7 +200,7 @@ function shrubsAndSoil(scene,C,H,compact){
   const tint=new T.Color();
   for(let i=0;i<n;i++){
     const z=-74+r()*130,side=i%2?-1:1,offset=8.9+Math.pow(r(),.65)*18.0;
-    const x=C(z)+side*offset,base=H(x,z),height=.25+r()*1.25;
+    const x=C(z)+side*offset,base=H(x,z),height=.32+r()*1.35;
     t.position.set(x,base+height*.26,z);
     t.rotation.set((r()-.5)*.28,r()*6.283,(r()-.5)*.22);
     t.scale.set(height*.13,height*.92,height*.13);
@@ -213,7 +217,7 @@ function shrubsAndSoil(scene,C,H,compact){
 function entranceMarker(scene,C,H){
   // Curved light masonry plaque at the side of the upper approach; wording only,
   // no copied university crest or mascot.
-  const z=-57,side=-1,x=C(z)+side*11.2;
+  const z=-57,side=-1,x=C(z)+side*10.9;
   const wallMat=new T.MeshStandardMaterial({color:'#d4d2c9',roughness:.93,side:T.DoubleSide});
   const band=new T.MeshStandardMaterial({color:'#b3b4a9',roughness:.88});
   const vertices=[],indices=[],segments=20;

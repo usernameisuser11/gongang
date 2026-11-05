@@ -17,7 +17,7 @@ function groundHeight(x,z) {
 function canWalk(x,z) {
   // Keep the parked 7016 bus solid while the pedestrian path remains open.
   const busZ=-38, busX=center(busZ)+1.85;
-  return z > -76 && z < 55 && Math.abs(x-center(z)) < 8.8
+  return z > -76 && z < 55 && Math.abs(x-center(z)) < 8.12
     && !(Math.abs(x-busX)<1.30 && Math.abs(z-busZ)<3.52);
 }
 const c = v => new T.Color(v);
@@ -112,15 +112,15 @@ function plants(scene,compact) {
     0,.12,.06,-.33,.31,-.22,0,.69,.05, 0,.12,.06,0,.69,.05,.36,.27,-.22
   ],3));
   canopyGeo.computeVertexNormals();
-  const treeCount=compact?29:42;
+  const treeCount=compact?37:53;
   const trunk=new T.InstancedMesh(trunkGeo,stemMat,treeCount);
   const branches=new T.InstancedMesh(branchGeo,stemMat,treeCount*4);
-  const foliagePerTree=42;
+  const foliagePerTree=compact?78:108;
   const leaves=new T.InstancedMesh(canopyGeo,foliageMat,treeCount*foliagePerTree);
   const temp=new T.Object3D(), tint=new T.Color();
   for(let k=0;k<treeCount;k++){
     const z=-67+random()*120,side=k%2?-1:1;
-    const x=center(z)+side*(10+random()*25);
+    const x=center(z)+side*(9.7+Math.pow(random(),1.65)*23);
     const h=groundHeight(x,z);
     const size=.84+random()*.85;
     temp.position.set(x,h+1.65*size,z);
@@ -136,12 +136,12 @@ function plants(scene,compact) {
     }
     for(let j=0;j<foliagePerTree;j++){
       const a=(j/foliagePerTree)*Math.PI*2*4.2 + .52*random();
-      const radial=j%5===0?0.36:(.8+random()*.86);
+      const radial=j%7===0?0.32:(.53+random()*1.12);
       const cx=x+Math.cos(a)*radial*size;
       const cz=z+Math.sin(a)*radial*.74*size;
-      temp.position.set(cx,h+(3.3+(j%7)*.25+random()*.35)*size,cz);
+      temp.position.set(cx,h+(3.20+(j%8)*.23+random()*.33)*size,cz);
       temp.rotation.set(random()*.4,random()*6.28,random()*.45);
-      temp.scale.set((.75+random()*.48)*size,(.79+random()*.43)*size,(.7+random()*.42)*size);
+      temp.scale.set((.68+random()*.5)*size,(.73+random()*.45)*size,(.69+random()*.49)*size);
       temp.updateMatrix();leaves.setMatrixAt(k*foliagePerTree+j,temp.matrix);
       tint.set(['#456b58','#6d885f','#8c9b73','#536a59','#a3a178'][Math.floor(random()*5)]);
       leaves.setColorAt(k*foliagePerTree+j,tint);
