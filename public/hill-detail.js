@@ -78,7 +78,7 @@ function cylinderBetween(scene,a,b,r=.046){
 }
 function markings(scene,C,H){
   // The incline's large white road warnings and two compact pedestrian crossings.
-  for(const [text,z,width] of [['서행',27,4.3],['천천히',-19,4.55],['상명대',-48,4.5]]){
+  for(const [text,z,width] of [['서행',27,4.3],['7016',-19,4.55],['상명대',-48,4.5]]){
     const mat=new T.MeshBasicMaterial({map:textTexture(text),transparent:true,depthWrite:false,side:T.DoubleSide});
     slopedPlane(scene,mat,C(z),z,H(C(z),z)+.145,width,2.3);
   }
