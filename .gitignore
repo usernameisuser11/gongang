@@ -1,0 +1,8 @@
+node_modules/
+data/
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
+.wrangler/
+supabase/.temp/

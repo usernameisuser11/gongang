@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "gonggang",
+  "main": "./cloudflare/worker.mjs",
+  "compatibility_date": "2026-04-08",
+  "d1_databases": [
+    {
+      "binding": "VISITS",
+      "database_name": "gonggang-visits",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "d1/migrations"
+    }
+  ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/presence", "/healthz"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "PRESENCE_ROOM", "class_name": "PresenceRoom" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["PresenceRoom"] }
+  ]
+}

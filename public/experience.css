@@ -1,0 +1,273 @@
+.cliff-ui {
+  --cliff-ink: #f8ecdb;
+  --cliff-muted: #d6cab9;
+  --cliff-glass: rgba(34, 36, 35, 0.68);
+  --cliff-border: rgba(255, 239, 216, 0.23);
+  --cliff-inset: clamp(18px, 3.25vw, 54px);
+  position: fixed;
+  z-index: 5;
+  inset: 0;
+  pointer-events: none;
+  color: var(--cliff-ink);
+  font-family: "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+}
+
+.cliff-ui [hidden] {
+  display: none !important;
+}
+
+.cliff-ui button {
+  appearance: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cliff-ui button:focus-visible,
+.cliff-ui input:focus-visible {
+  outline: 2px solid #f7d59b;
+  outline-offset: 3px;
+}
+
+.cliff-title {
+  position: absolute;
+  top: max(var(--cliff-inset), env(safe-area-inset-top));
+  left: max(var(--cliff-inset), env(safe-area-inset-left));
+  max-width: calc(100% - 2 * var(--cliff-inset) - 54px);
+  text-shadow: 0 1px 3px rgba(24, 28, 29, 0.85), 0 2px 18px rgba(24, 28, 29, 0.45);
+}
+
+.cliff-title h1 {
+  margin: 0;
+  font-size: clamp(34px, 4.1vw, 62px);
+  font-weight: 700;
+  letter-spacing: -0.055em;
+  line-height: 1.1;
+}
+
+.cliff-tagline {
+  margin: 9px 0 0;
+  color: #fff3df;
+  font-size: clamp(11px, 1.1vw, 14px);
+  font-weight: 550;
+  line-height: 1.45;
+  word-break: keep-all;
+}
+
+.cliff-status {
+  margin: 7px 0 0;
+  color: var(--cliff-muted);
+  font-size: clamp(10px, 1.15vw, 13px);
+  font-weight: 550;
+  letter-spacing: 0.03em;
+}
+
+.cliff-icon {
+  display: grid;
+  place-content: center;
+  pointer-events: auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 7px;
+  border: 1px solid var(--cliff-border);
+  border-radius: 100px;
+  background: var(--cliff-glass);
+  backdrop-filter: blur(9px);
+  transition: color 150ms, background 150ms, border-color 150ms;
+}
+
+.cliff-icon:hover,
+.cliff-icon[aria-expanded="true"],
+.cliff-icon[aria-pressed="true"] {
+  border-color: rgba(255, 228, 181, 0.55);
+  color: #ffe0ad;
+  background: rgba(54, 45, 37, 0.85);
+}
+
+.cliff-settings {
+  position: absolute;
+  top: max(var(--cliff-inset), env(safe-area-inset-top));
+  right: max(var(--cliff-inset), env(safe-area-inset-right));
+}
+
+.cliff-actions {
+  position: absolute;
+  bottom: max(var(--cliff-inset), env(safe-area-inset-bottom));
+  right: max(var(--cliff-inset), env(safe-area-inset-right));
+  display: flex;
+  gap: 6px;
+}
+
+.cliff-ui .cliff-action {
+  min-width: 49px;
+  min-height: 52px;
+  justify-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.cliff-hint {
+  position: absolute;
+  bottom: max(var(--cliff-inset), env(safe-area-inset-bottom));
+  left: max(var(--cliff-inset), env(safe-area-inset-left));
+  padding: 7px 11px;
+  border-radius: 25px;
+  background: rgba(32, 34, 31, 0.59);
+  color: var(--cliff-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  transition: opacity 950ms ease;
+}
+
+.cliff-hint-faded,
+.cliff-ui:has(.cliff-stick:not([hidden])) .cliff-hint {
+  opacity: 0;
+}
+
+.cliff-panel {
+  position: absolute;
+  top: calc(max(var(--cliff-inset), env(safe-area-inset-top)) + 54px);
+  right: max(var(--cliff-inset), env(safe-area-inset-right));
+  width: min(278px, calc(100% - 36px));
+  max-height: calc(100% - 145px);
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  padding: 15px;
+  border: 1px solid var(--cliff-border);
+  border-radius: 14px;
+  background: rgba(35, 37, 34, 0.92);
+  backdrop-filter: blur(13px);
+  box-shadow: 0 12px 34px rgba(18, 20, 18, 0.25);
+  font-size: 13px;
+}
+
+.cliff-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cliff-panel-head h2 {
+  margin: 0;
+  font-family: "Noto Serif KR", "Batang", serif;
+  font-size: 22px;
+  letter-spacing: -0.045em;
+}
+
+.cliff-panel-head button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cliff-muted);
+  font-size: 25px;
+  line-height: 1;
+}
+
+.cliff-toggle,
+.cliff-companions li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 43px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 239, 216, 0.13);
+}
+
+.cliff-toggle small {
+  display: block;
+  margin-top: 4px;
+  color: var(--cliff-muted);
+  font-size: 10px;
+}
+
+.cliff-toggle input {
+  width: 20px;
+  height: 20px;
+  margin: 0 6px;
+  accent-color: #dab47c;
+  cursor: pointer;
+}
+
+.cliff-companions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cliff-companions li {
+  min-height: 35px;
+}
+
+.cliff-companions i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 7px;
+  border-radius: 50%;
+}
+
+.cliff-companions button,
+.cliff-toggle button {
+  min-height: 32px;
+  padding: 3px 9px;
+  border: 1px solid var(--cliff-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cliff-muted);
+  font-size: 11px;
+}
+
+.cliff-panel-note,
+.cliff-panel-help {
+  margin: 12px 0 0;
+  color: var(--cliff-muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.cliff-stick {
+  position: absolute;
+  bottom: max(var(--cliff-inset), env(safe-area-inset-bottom));
+  left: max(var(--cliff-inset), env(safe-area-inset-left));
+  display: grid;
+  place-content: center;
+  width: 88px;
+  height: 88px;
+  box-sizing: border-box;
+  pointer-events: auto;
+  touch-action: none;
+  border: 1px solid var(--cliff-border);
+  border-radius: 50%;
+  background: rgba(34, 36, 35, 0.34);
+}
+
+.cliff-stick span {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--cliff-border);
+  border-radius: 50%;
+  background: rgba(233, 211, 176, 0.44);
+}
+
+@media (max-width: 620px) {
+  .cliff-ui .cliff-action { min-width: 44px; min-height: 46px; padding: 5px; }
+  .cliff-action svg { width: 18px; height: 18px; }
+  .cliff-hint {
+    bottom: calc(max(var(--cliff-inset), env(safe-area-inset-bottom)) + 53px);
+    font-size: 10px;
+  }
+  .cliff-stick { width: 73px; height: 73px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cliff-ui * { transition-duration: 0ms !important; }
+}
