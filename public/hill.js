@@ -204,9 +204,14 @@ export function makeHill(scene,time,compact=false) {
   makeRoad(scene);
   buildings(scene);
   plants(scene,compact);
+  // Keep travelers' feet aligned to the raised asphalt and pavement meshes.
+  const walkingHeight=(x,z)=>{
+    const offset=Math.abs(x-center(z));
+    return groundHeight(x,z)+(offset<=3.95?.095:offset>=4.2&&offset<=6.7?.16:.02);
+  };
   const terrain={
     spawn:{x:center(36)-5.35,z:36},
-    heightAt:groundHeight,canWalk,
+    heightAt:walkingHeight,canWalk,
     pick(raycaster){return raycaster.intersectObject(surface,false)[0]?.point??null}
   };
   return terrain;
