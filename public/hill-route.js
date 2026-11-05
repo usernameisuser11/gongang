@@ -108,15 +108,34 @@ function primarySchool(scene,C,H){
     }
   }
 
-  // Characteristic low perimeter wall along the road, but leave the school gate open.
-  const wallX=C(z)-8.75,wallMat=mat.masonry;
-  for(let i=0;i<17;i++){
-    const zz=28+i*3.0;
-    if(zz>48&&zz<58)continue;
-    const xx=C(zz)-8.80,base=H(xx,zz);
-    box(scene,wallMat,xx,base+.76,zz,.64,1.56,3.06);
-    box(scene,mat.schoolTrim,xx,base+1.59,zz,.72,.15,3.10);
-  }
+  // A continuous wall follows the street grade; the school gate remains open.
+  const wallMat=new T.MeshStandardMaterial({color:'#b29b87',side:T.DoubleSide,roughness:1});
+  const buildWall=(from,to)=>{
+    const verts=[],uv=[],indices=[],capVerts=[],capIndices=[],segments=Math.max(6,Math.ceil(Math.abs(to-from)/.65));
+    for(let i=0;i<=segments;i++){
+      const zz=from+(to-from)*i/segments,xx=C(zz)-8.8,base=H(xx,zz);
+      const top=base+1.55;
+      verts.push(xx,base-.11,zz,xx,top,zz);
+      uv.push(i/3,0,i/3,1);
+      capVerts.push(xx-.37,top+.025,zz,xx+.37,top+.025,zz);
+      if(i<segments){
+        const k=i*2;
+        indices.push(k,k+1,k+2,k+1,k+3,k+2);
+        capIndices.push(k,k+2,k+1,k+1,k+2,k+3);
+      }
+    }
+    const wallGeo=new T.BufferGeometry();
+    wallGeo.setAttribute('position',new T.Float32BufferAttribute(verts,3));
+    wallGeo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
+    wallGeo.setIndex(indices);wallGeo.computeVertexNormals();
+    const wall=new T.Mesh(wallGeo,wallMat);wall.receiveShadow=true;scene.add(wall);
+    const capGeo=new T.BufferGeometry();
+    capGeo.setAttribute('position',new T.Float32BufferAttribute(capVerts,3));
+    capGeo.setIndex(capIndices);capGeo.computeVertexNormals();
+    scene.add(new T.Mesh(capGeo,mat.schoolTrim));
+  };
+  buildWall(28,48.2);
+  buildWall(58.8,76);
   const gateZ=53.5,gateX=C(gateZ)-8.65,gateY=H(gateX,gateZ);
   for(const gateOff of [-5.1,5.1]){
     box(scene,mat.schoolDark,gateX,gateY+1.69,gateZ+gateOff,.72,3.38,.78);
