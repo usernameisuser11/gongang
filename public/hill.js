@@ -14,7 +14,7 @@ function groundHeight(x,z) {
   return climb(z)+slope+(fbm(x*.13+11,z*.12)-.5)*.72*smooth(7,14,dx);
 }
 function canWalk(x,z) {
-  return z > -62 && z < 48 && Math.abs(x-center(z)) < 8.8;
+  return z > -76 && z < 55 && Math.abs(x-center(z)) < 8.8;
 }
 const c = v => new T.Color(v);
 
@@ -70,12 +70,12 @@ function makeRoad(scene) {
   const pavement=new T.MeshStandardMaterial({color:'#a29a8b',roughness:.97,side:T.DoubleSide});
   const line=new T.MeshBasicMaterial({color:'#d8c49a',side:T.DoubleSide});
   const border=new T.MeshStandardMaterial({color:'#b6ac9b',roughness:.95,side:T.DoubleSide});
-  ribbon(scene,-3.95,3.95,-66,50,road,.095);
-  ribbon(scene,-6.7,-4.2,-66,50,pavement,.16);
-  ribbon(scene,4.2,6.7,-66,50,pavement,.16);
-  ribbon(scene,-4.20,-4.07,-66,50,border,.22);
-  ribbon(scene,4.07,4.20,-66,50,border,.22);
-  ribbon(scene,-.075,.075,-66,50,line,.111);
+  ribbon(scene,-3.95,3.95,-76,55,road,.095);
+  ribbon(scene,-6.7,-4.2,-76,55,pavement,.16);
+  ribbon(scene,4.2,6.7,-76,55,pavement,.16);
+  ribbon(scene,-4.20,-4.07,-76,55,border,.22);
+  ribbon(scene,4.07,4.20,-76,55,border,.22);
+  ribbon(scene,-.075,.075,-76,55,line,.111);
   // Soft roadside stones and garden strips break up the straight road edges.
   const random=rng(718);
   const stones=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),new T.MeshStandardMaterial({color:'#858579',roughness:1}),160);
@@ -211,7 +211,7 @@ function buildings(scene) {
 export function makeHill(scene,time,compact=false) {
   const surface=land(scene);
   makeRoad(scene);
-  buildings(scene);
+  // The detailed roadside residences replace the earlier placeholder houses.
   plants(scene,compact);
   addHillDetails(scene,{center,heightAt:groundHeight});
   // Keep travelers' feet aligned to the raised asphalt and pavement meshes.
