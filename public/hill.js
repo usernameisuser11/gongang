@@ -1,10 +1,11 @@
 import * as T from 'three';
 import { fbm, noise, rng, smooth } from './nature.js';
+import { addHillDetails } from './hill-detail.js';
 
 // A painterly reinterpretation of the memorable Sangmyung uphill walk, not a survey map.
-const edgeA = -72, edgeB = 58;
-const center = z => 1.5*Math.sin(z*.07)+1.1*Math.sin(z*.029+1.7);
-const climb = z => 5.7 + (45-z)*.232 + .22*Math.sin(z*.063);
+const edgeA = -112, edgeB = 78;
+const center = z => 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7);
+const climb = z => 7.2 + (49-z)*.252 + .36*Math.sin((z+9)*.053);
 
 function groundHeight(x,z) {
   const dx=Math.abs(x-center(z));
@@ -13,7 +14,7 @@ function groundHeight(x,z) {
   return climb(z)+slope+(fbm(x*.13+11,z*.12)-.5)*.72*smooth(7,14,dx);
 }
 function canWalk(x,z) {
-  return z > -62 && z < 48 && Math.abs(x-center(z)) < 11.6;
+  return z > -62 && z < 48 && Math.abs(x-center(z)) < 8.8;
 }
 const c = v => new T.Color(v);
 
@@ -93,14 +94,22 @@ function makeRoad(scene) {
 
 function plants(scene,compact) {
   const random=rng(7316),stemMat=new T.MeshStandardMaterial({color:'#62554a',roughness:1});
-  const foliageMat=new T.MeshStandardMaterial({vertexColors:false,roughness:.94,flatShading:false});
+  const foliageMat=new T.MeshStandardMaterial({vertexColors:false,roughness:.94,side:T.DoubleSide});
   const trunkGeo=new T.CylinderGeometry(.095,.19,3.35,6);
   const branchGeo=new T.CylinderGeometry(.015,.065,1.5,5);
-  const canopyGeo=new T.IcosahedronGeometry(1,1);
-  const treeCount=compact?32:45;
+  // Layered, irregular leaf silhouettes instead of round polygon blobs.
+  const canopyGeo=new T.BufferGeometry();
+  canopyGeo.setAttribute('position',new T.Float32BufferAttribute([
+    0,0,0,-.52,.28,.06,-.14,.81,.08, 0,0,0,-.14,.81,.08,.47,.22,.06,
+    0,.07,-.12,-.32,.44,.03,.08, 0,.07,-.12,.08,1.0,.01,.37,.40,.03,
+    0,.12,.06,-.33,.31,-.22,0,.69,.05, 0,.12,.06,0,.69,.05,.36,.27,-.22
+  ],3));
+  canopyGeo.computeVertexNormals();
+  const treeCount=compact?29:42;
   const trunk=new T.InstancedMesh(trunkGeo,stemMat,treeCount);
   const branches=new T.InstancedMesh(branchGeo,stemMat,treeCount*4);
-  const leaves=new T.InstancedMesh(canopyGeo,foliageMat,treeCount*9);
+  const foliagePerTree=42;
+  const leaves=new T.InstancedMesh(canopyGeo,foliageMat,treeCount*foliagePerTree);
   const temp=new T.Object3D(), tint=new T.Color();
   for(let k=0;k<treeCount;k++){
     const z=-67+random()*120,side=k%2?-1:1;
@@ -118,17 +127,17 @@ function plants(scene,compact) {
       temp.scale.set(size,size,size);
       temp.updateMatrix();branches.setMatrixAt(k*4+b,temp.matrix);
     }
-    for(let j=0;j<9;j++){
-      const a=(j/9)*Math.PI*2 + .17*random();
-      const radial=j%3===0?0.42:1.18;
+    for(let j=0;j<foliagePerTree;j++){
+      const a=(j/foliagePerTree)*Math.PI*2*4.2 + .52*random();
+      const radial=j%5===0?0.36:(.8+random()*.86);
       const cx=x+Math.cos(a)*radial*size;
       const cz=z+Math.sin(a)*radial*.74*size;
-      temp.position.set(cx,h+(3.55+(j%4)*.24)*size,cz);
+      temp.position.set(cx,h+(3.3+(j%7)*.25+random()*.35)*size,cz);
       temp.rotation.set(random()*.4,random()*6.28,random()*.45);
-      temp.scale.set((.55+random()*.35)*size,(.77+random()*.40)*size,(.37+random()*.32)*size);
-      temp.updateMatrix();leaves.setMatrixAt(k*9+j,temp.matrix);
+      temp.scale.set((.75+random()*.48)*size,(.79+random()*.43)*size,(.7+random()*.42)*size);
+      temp.updateMatrix();leaves.setMatrixAt(k*foliagePerTree+j,temp.matrix);
       tint.set(['#456b58','#6d885f','#8c9b73','#536a59','#a3a178'][Math.floor(random()*5)]);
-      leaves.setColorAt(k*9+j,tint);
+      leaves.setColorAt(k*foliagePerTree+j,tint);
     }
   }
   scene.add(trunk,branches,leaves);
@@ -204,13 +213,14 @@ export function makeHill(scene,time,compact=false) {
   makeRoad(scene);
   buildings(scene);
   plants(scene,compact);
+  addHillDetails(scene,{center,heightAt:groundHeight});
   // Keep travelers' feet aligned to the raised asphalt and pavement meshes.
   const walkingHeight=(x,z)=>{
     const offset=Math.abs(x-center(z));
     return groundHeight(x,z)+(offset<=3.95?.095:offset>=4.2&&offset<=6.7?.16:.02);
   };
   const terrain={
-    spawn:{x:center(36)-5.35,z:36},
+    spawn:{x:center(43)-5.35,z:43},
     heightAt:walkingHeight,canWalk,
     pick(raycaster){return raycaster.intersectObject(surface,false)[0]?.point??null}
   };
