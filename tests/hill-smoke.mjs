@@ -37,7 +37,8 @@ async function preparePage(browser, options) {
       catch {}
     });
   });
-  await page.goto(base + '/?map=hill', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  // WebGL setup may run synchronously before DOMContentLoaded on shared CI GPUs.
+  await page.goto(base + '/?map=hill', { waitUntil: 'commit', timeout: 45000 });
   await page.locator('#viewport[data-ready="true"]').waitFor({ state: 'attached', timeout: 45000 });
   await page.locator('[data-world]').waitFor();
   assert.equal(await page.locator('[data-world]').inputValue(), 'hill');
