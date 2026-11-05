@@ -18,7 +18,7 @@ function groundHeight(x,z) {
 function canWalk(x,z) {
   // Keep the parked 7016 bus solid while the pedestrian path remains open.
   const busZ=-38, busX=center(busZ)+1.85;
-  return z > -76 && z < 83 && Math.abs(x-center(z)) < 8.12
+  return z > -98 && z < 83 && Math.abs(x-center(z)) < 8.12
     && !(Math.abs(x-busX)<1.30 && Math.abs(z-busZ)<3.52);
 }
 const c = v => new T.Color(v);
@@ -78,12 +78,12 @@ function makeRoad(scene) {
   const pavement=surface.sidewalk;
   const line=new T.MeshBasicMaterial({color:'#d8c49a',side:T.DoubleSide});
   const border=new T.MeshStandardMaterial({color:'#b6ac9b',roughness:.95,side:T.DoubleSide});
-  ribbon(scene,-3.95,3.95,-76,86,road,.095);
-  ribbon(scene,-6.7,-4.2,-76,86,pavement,.16);
-  ribbon(scene,4.2,6.7,-76,86,pavement,.16);
-  ribbon(scene,-4.20,-4.07,-76,86,border,.22);
-  ribbon(scene,4.07,4.20,-76,86,border,.22);
-  ribbon(scene,-.075,.075,-76,86,line,.111);
+  ribbon(scene,-3.95,3.95,-105,86,road,.095);
+  ribbon(scene,-6.7,-4.2,-105,86,pavement,.16);
+  ribbon(scene,4.2,6.7,-105,86,pavement,.16);
+  ribbon(scene,-4.20,-4.07,-105,86,border,.22);
+  ribbon(scene,4.07,4.20,-105,86,border,.22);
+  ribbon(scene,-.075,.075,-105,86,line,.111);
   // Soft roadside stones and garden strips break up the straight road edges.
   const random=rng(718);
   const stones=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),new T.MeshStandardMaterial({color:'#858579',roughness:1}),160);
