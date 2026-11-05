@@ -16,9 +16,9 @@ function start() {
   const renderer = new T.WebGLRenderer({antialias:!compact, alpha:false, powerPreference:'high-performance'});
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.toneMapping = T.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.02;
+  renderer.toneMappingExposure = mapId === 'hill' ? 1.12 : 1.02;
   viewport.append(renderer.domElement);
-  renderer.domElement.setAttribute('aria-label','걸어서 둘러보는 해안 초원');
+  renderer.domElement.setAttribute('aria-label',mapId === 'hill' ? '걸어서 오르는 상명의 언덕길' : '걸어서 둘러보는 해안 초원');
   renderer.domElement.addEventListener('webglcontextlost', event => {
     event.preventDefault();
     loading.textContent = '풍경을 다시 불러오는 중…';
@@ -27,7 +27,7 @@ function start() {
   renderer.domElement.addEventListener('webglcontextrestored', () => { loading.hidden = true; });
 
   const scene = new T.Scene();
-  scene.fog = new T.FogExp2(mapId === 'hill' ? '#a2afb0' : '#9baab3', mapId === 'hill' ? .0066 : .0038);
+  scene.fog = new T.FogExp2(mapId === 'hill' ? '#a2afb0' : '#9baab3', mapId === 'hill' ? .0046 : .0038);
   const camera = new T.PerspectiveCamera(49,1,.13,1350);
   const time = {value:8.4};
   scene.add(new T.HemisphereLight('#c9e2ff','#94845e',1.76));

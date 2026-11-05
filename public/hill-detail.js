@@ -131,16 +131,21 @@ function brickMaterial(){
 }
 function houses(scene,C,H){
   const brick=brickMaterial(),white=materials.pale,glass=materials.dark;
+  const foundations=new T.MeshStandardMaterial({color:'#77786e',roughness:1});
+  const frameDark=new T.MeshStandardMaterial({color:'#474946',roughness:.96});
   // Irregular homes overlooking the road; no mirrored symmetrical housing rows.
   const rows=[
-    [43,1,22.5,8,12,9.8],[30,-1,19.5,8,11.8,11.4],
-    [4,1,22.5,9,10.7,12.4],[-20,-1,23.7,10,12.1,13.8],
-    [-39,1,25.5,9.1,12.3,13.2],[-56,-1,22.9,10,11.3,12.5]
+    [43,1,15.8,8,12,9.8],[30,-1,14.4,8,11.8,11.4],
+    [4,1,16.5,9,10.7,12.4],[-20,-1,15.2,10,12.1,13.8],
+    [-39,1,16.8,9.1,12.3,13.2],[-56,-1,22.9,10,11.3,12.5]
   ];
   for(let i=0;i<rows.length;i++){
     const [z,side,offset,w,d,h]=rows[i];
     const x=C(z)+side*offset,bottom=H(x,z),face=x-side*(w/2+.05);
+    // Stone basement connects buildings to the steep slope on the downhill side.
+    box(scene,[w+.30,3.3,d+.24],foundations,x,bottom-1.53,z);
     box(scene,[w,h,d],i%3===1?white:brick,x,bottom+h*.5,z);
+    box(scene,[w+.20,.14,d+.14],materials.cap,x,bottom+.18,z);
     box(scene,[w+.55,.3,d+.55],materials.roof,x,bottom+h,z);
     for(let floor=0;floor<Math.floor((h-1)/2.1);floor++){
       for(let col=0;col<4;col++){
@@ -152,6 +157,12 @@ function houses(scene,C,H){
     }
     box(scene,[.2,2.03,1.14],materials.dark,face-side*.06,bottom+1.08,z);
     box(scene,[.52,.15,2.0],materials.roof,face-side*.25,bottom+2.35,z);
+    // Small awning, concrete sill and doorway shadow make each facade less boxlike.
+    box(scene,[.28,.17,2.21],foundations,face-side*.10,bottom+.30,z);
+    for(let j=0;j<4;j++){
+      const zz=z+(j-1.5)*2.23;
+      box(scene,[.36,.14,1.28],frameDark,face-side*.12,bottom+1.18,zz);
+    }
   }
 }
 function campus(scene,C,H){
@@ -211,7 +222,7 @@ function shelter(scene,C,H){
 }
 export function addHillDetails(scene,{center,heightAt}){
   markings(scene,center,heightAt);
-  retainingWall(scene,center,heightAt);
+  // The detailed textured retaining wall in hill-streetscape replaces these basic pillars.
   houses(scene,center,heightAt);
   campus(scene,center,heightAt);
   shelter(scene,center,heightAt);

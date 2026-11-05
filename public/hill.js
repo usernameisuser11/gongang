@@ -1,6 +1,7 @@
 import * as T from 'three';
 import { fbm, noise, rng, smooth } from './nature.js';
 import { addHillDetails } from './hill-detail.js';
+import { addHillStreetscape, streetSurfaceMaterials } from './hill-streetscape.js';
 
 // A painterly reinterpretation of the memorable Sangmyung uphill walk, not a survey map.
 const edgeA = -112, edgeB = 78;
@@ -14,7 +15,10 @@ function groundHeight(x,z) {
   return climb(z)+slope+(fbm(x*.13+11,z*.12)-.5)*.72*smooth(7,14,dx);
 }
 function canWalk(x,z) {
-  return z > -76 && z < 55 && Math.abs(x-center(z)) < 8.8;
+  // Keep the parked 7016 bus solid while the pedestrian path remains open.
+  const busZ=-38, busX=center(busZ)+1.85;
+  return z > -76 && z < 55 && Math.abs(x-center(z)) < 8.8
+    && !(Math.abs(x-busX)<1.30 && Math.abs(z-busZ)<3.52);
 }
 const c = v => new T.Color(v);
 
@@ -45,18 +49,20 @@ function land(scene) {
 }
 
 function ribbon(scene,left,right,z0,z1,mat,lift=.065) {
-  const positions=[],idx=[];
+  const positions=[],uv=[],idx=[];
   const steps=180;
   for(let j=0;j<=steps;j++) {
     const z=z0+(z1-z0)*j/steps, mid=center(z);
     for(const off of [left,right]){
       const x=mid+off;
       positions.push(x,groundHeight(x,z)+lift,z);
+      uv.push(off===left?0:1,(z-z0)/2.1);
     }
     if(j<steps){const i=j*2;idx.push(i,i+2,i+1,i+1,i+2,i+3);}
   }
   const g=new T.BufferGeometry();
   g.setAttribute('position',new T.Float32BufferAttribute(positions,3));
+  g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
   g.setIndex(idx);g.computeVertexNormals();
   const surface=new T.Mesh(g,mat);surface.receiveShadow=true;scene.add(surface);
 }
@@ -66,8 +72,9 @@ function box(scene,geometry,material,x,y,z,rot=0) {
 }
 
 function makeRoad(scene) {
-  const road=new T.MeshStandardMaterial({color:'#5c625f',roughness:.99,side:T.DoubleSide});
-  const pavement=new T.MeshStandardMaterial({color:'#a29a8b',roughness:.97,side:T.DoubleSide});
+  const surface=streetSurfaceMaterials();
+  const road=surface.asphalt;
+  const pavement=surface.sidewalk;
   const line=new T.MeshBasicMaterial({color:'#d8c49a',side:T.DoubleSide});
   const border=new T.MeshStandardMaterial({color:'#b6ac9b',roughness:.95,side:T.DoubleSide});
   ribbon(scene,-3.95,3.95,-76,55,road,.095);
@@ -214,6 +221,7 @@ export function makeHill(scene,time,compact=false) {
   // The detailed roadside residences replace the earlier placeholder houses.
   plants(scene,compact);
   addHillDetails(scene,{center,heightAt:groundHeight});
+  addHillStreetscape(scene,{center,heightAt:groundHeight,compact});
   // Keep travelers' feet aligned to the raised asphalt and pavement meshes.
   const walkingHeight=(x,z)=>{
     const offset=Math.abs(x-center(z));
