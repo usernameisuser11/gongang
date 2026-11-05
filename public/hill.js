@@ -235,6 +235,10 @@ export function makeHill(scene,time,compact=false) {
   };
   const terrain={
     spawn:{x:center(77)-5.35,z:77},
+    spawnFor(id){
+      const point=HILL_CHECKPOINTS.find(p=>p.id===id);
+      return point ? {x:center(point.z)-5.35,z:point.z} : this.spawn;
+    },
     checkpoints:HILL_CHECKPOINTS,
     heightAt:walkingHeight,canWalk,
     pick(raycaster){return raycaster.intersectObject(surface,false)[0]?.point??null}

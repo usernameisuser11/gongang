@@ -51,7 +51,7 @@ function start() {
   const portrait = window.innerHeight > window.innerWidth;
   const experience = createExperience({
     THREE:T,scene,camera,renderer,terrain,mapId,
-    spawn:mapId === 'hill' ? terrain.spawn : (portrait?{x:-13.3,z:19.5}:{x:-10.2,z:17.8}),
+    spawn:mapId === 'hill' ? terrain.spawnFor(new URLSearchParams(location.search).get('stop')) : (portrait?{x:-13.3,z:19.5}:{x:-10.2,z:17.8}),
     initialYaw:mapId === 'hill' ? 0 : (portrait?.165:.145),
     view:mapId === 'hill'
       ? {distance:portrait?7.5:9.1,pitch:.13,height:1.65,aimHeight:1.53,scale:1.01,speed:3.65}

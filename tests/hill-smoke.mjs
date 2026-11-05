@@ -25,7 +25,7 @@ async function waitServer() {
   throw new Error('Timed out waiting for local Cloudflare Worker: ' + logs.slice(-4000));
 }
 const errors = [];
-async function preparePage(browser, options) {
+async function preparePage(browser, options, stop = '') {
   const context = await browser.newContext(options);
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(String(error)));
@@ -38,10 +38,13 @@ async function preparePage(browser, options) {
     });
   });
   // WebGL setup may run synchronously before DOMContentLoaded on shared CI GPUs.
-  await page.goto(base + '/?map=hill', { waitUntil: 'commit', timeout: 45000 });
+  const url = base + '/?map=hill' + (stop ? '&stop=' + encodeURIComponent(stop) : '');
+  await page.goto(url, { waitUntil: 'commit', timeout: 45000 });
   await page.locator('#viewport[data-ready="true"]').waitFor({ state: 'attached', timeout: 45000 });
   await page.locator('[data-world]').waitFor();
   assert.equal(await page.locator('[data-world]').inputValue(), 'hill');
+  await page.locator('[data-journey]').waitFor({state:'visible'});
+  assert.match(await page.locator('[data-journey]').innerText(),/등굣길|언덕 아래|초등학교|윤가네|부대통령|정류장/);
   return { context, page, socketFrames };
 }
 async function waitUntil(condition, label, timeout=20000) {
@@ -69,6 +72,14 @@ try {
   });
   await previewMobile.page.screenshot({path:'artifacts/hill-mobile.png',timeout:30000});
   await previewMobile.context.close();
+
+  // Capture the real route's landmark views separately. All stops share the
+  // same continuous world; the stop URL is a preview/deep-link spawn only.
+  for(const id of ['elementary','yungane','budaetong','university']){
+    const item=await preparePage(browser,{viewport:{width:1200,height:740}},id);
+    await item.page.screenshot({path:'artifacts/stop-'+id+'.png',timeout:30000});
+    await item.context.close();
+  }
 
   // Lightweight, simultaneous companion clients exercise WebSocket state changes
   // without conflating multiplayer latency with full-size software WebGL rendering.
