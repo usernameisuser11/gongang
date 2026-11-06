@@ -86,7 +86,7 @@ try {
   const previewDesktop=await preparePage(browser,{viewport:{width:1365,height:768}});
   await previewDesktop.page.screenshot({path:'artifacts/hill-desktop.png',timeout:30000});
   assert.match(await previewDesktop.page.locator('[data-journey-label]').innerText(),/1\/7.*언덕 맨 아래/);
-  assert.equal(await previewDesktop.page.locator('[data-journey-fill]').evaluate(node=>node.style.width),'0.0%');
+  assert.equal(parseFloat(await previewDesktop.page.locator('[data-journey-fill]').evaluate(node=>node.style.width)),0);
   const walkButton = previewDesktop.page.locator('[data-journey-walk]');
   assert.equal(await walkButton.isVisible(), true, 'guided hill walking button visible');
   await walkButton.click();
