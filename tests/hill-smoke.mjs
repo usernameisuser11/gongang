@@ -63,7 +63,7 @@ async function preparePage(browser, options, stop = '') {
   await page.locator('[data-world]').waitFor();
   assert.equal(await page.locator('[data-world]').inputValue(), 'hill');
   await page.locator('[data-journey]').waitFor({state:'visible'});
-  assert.match(await page.locator('[data-journey]').innerText(),/등굣길|언덕 아래|초등학교|윤가네|부대통령|정류장/);
+  assert.match(await page.locator('[data-journey]').innerText(),/등굣길|언덕 맨 아래|진입 삼거리|초등학교|윤가네|부대통령|정류장/);
   return { context, page, socketFrames };
 }
 async function waitUntil(condition, label, timeout=20000) {
