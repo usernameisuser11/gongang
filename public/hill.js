@@ -39,14 +39,15 @@ const closestRouteZ = (x,z) => {
   return best;
 };
 const straightFork = z => center(169)+(169-z)*.035;
+const schoolFork = z => center(59)+(59-z)*.025;
 // Continuous grade profile. The lower street is gentle, then becomes
 // noticeably steeper AFTER the school; it eases near the 7016 bus stop.
 const gradeRamp = (distance,width) => distance<=0?0:distance<width
   ? distance*distance/(2*width) : distance-width/2;
 const climb = z => 7.2+(49-Math.min(z,86))*.252 - Math.max(0,z-86)*.14
   + .36*Math.sin((z+9)*.053)
-  + .15*gradeRamp(60-z,12)
-  - .28*gradeRamp(-12-z,14);
+  + .08*gradeRamp(60-z,12)
+  - .21*gradeRamp(-12-z,14);
 
 function groundHeight(x,z) {
   const onRoute=Math.abs(x-center(z))/Math.hypot(1,centerSlope(z));
@@ -54,7 +55,11 @@ function groundHeight(x,z) {
   // its surface rises into a hillside after the left turn.
   const forkWeight=smooth(91,119,z)*(1-smooth(153,169,z));
   const straightDistance=Math.abs(x-straightFork(z))+12*(1-forkWeight);
-  const dx=Math.min(onRoute,straightDistance);
+  // A side street continues ahead at the school's second junction while the
+  // actual commute cuts left. Ground both branches on the same hillside.
+  const schoolBranchWeight=smoothRoute((61-z)/12)*(1-smoothRoute((31-z)/12));
+  const schoolDistance=Math.abs(x-schoolFork(z))+12*(1-schoolBranchWeight);
+  const dx=Math.min(onRoute,straightDistance,schoolDistance);
   const shoulder=Math.min(48,Math.max(0,dx-7.2));
   const slope=shoulder*.17 + shoulder*shoulder*.009;
   // The street-view entrance is a developed road fork, not the sheer green
@@ -281,7 +286,7 @@ export function makeHill(scene,time,compact=false) {
   addHillStreetscape(scene,{center,heightAt:groundHeight,compact});
   // The entrance and low-rise street are drawn before the upper landmarks.
   addLowerHillApproach(scene,{center,straightFork,heightAt:groundHeight,compact});
-  addHillCommute(scene,{center,heightAt:groundHeight});
+  addHillCommute(scene,{center,schoolFork,heightAt:groundHeight});
   // Keep travelers' feet aligned to the raised asphalt and pavement meshes.
   const walkingHeight=(x,z)=>{
     const s=closestRouteZ(x,z);
