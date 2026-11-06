@@ -241,6 +241,8 @@ export function makeHill(scene,time,compact=false) {
     },
     checkpoints:HILL_CHECKPOINTS,
     heightAt:walkingHeight,canWalk,
+    // The left and right sidewalk centerlines stay clear of parked vehicles.
+    routeX(z, side = -1){ return center(z) + (side < 0 ? -5.35 : 5.35); },
     pick(raycaster){return raycaster.intersectObject(surface,false)[0]?.point??null}
   };
   return terrain;

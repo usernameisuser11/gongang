@@ -33,6 +33,8 @@ jobs:
           node --check public/scene.js
           node --check public/experience.js
           node --check cloudflare/worker.mjs
+      - name: Verify Cloudflare Worker bundle without deployment
+        run: npm run cloudflare:check
       - name: Apply local D1 migrations
         run: npx wrangler d1 migrations apply VISITS --local
       - name: Browser, presence and map smoke tests

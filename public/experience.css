@@ -328,6 +328,21 @@
   transition: width 250ms ease-out;
 }
 .cliff-journey small {font-size:10px; color:var(--cliff-muted);}
+.cliff-journey-walk {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 231, 194, .38);
+  border-radius: 8px;
+  background: rgba(87, 78, 65, .48);
+  color: #f8eada;
+  pointer-events: auto;
+  font-size: 11px !important;
+  line-height: 1.4;
+}
+.cliff-journey-walk[aria-pressed="true"] { background: rgba(111, 90, 65, .78); }
+.cliff-journey-walk:disabled { opacity: .55; cursor: default; }
 @media (max-width: 600px) {
   .cliff-journey {width:min(224px,calc(100vw - 35px)); padding:7px 10px;}
 }

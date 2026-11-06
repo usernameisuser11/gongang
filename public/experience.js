@@ -235,7 +235,7 @@ function buildInterface(root) {
       <p class="cliff-tagline">수업과 수업 사이, 상명인을 위한 작은 쉼터</p>
       <p class="cliff-status" data-status role="status">잠시 쉬어가는 중</p>
       <label class="cliff-world">풍경 <select data-world aria-label="풍경 선택"><option value="cliff">바람의 절벽</option><option value="hill">상명의 언덕길</option></select></label>
-      <div class="cliff-journey" data-journey hidden aria-live="off"><span data-journey-label>등굣길 시작</span><div class="cliff-journey-track"><i data-journey-fill></i></div><small data-journey-next>언덕 아래</small></div>
+      <div class="cliff-journey" data-journey hidden aria-live="off"><span data-journey-label>등굣길 시작</span><div class="cliff-journey-track"><i data-journey-fill></i></div><small data-journey-next>언덕 아래</small><button class="cliff-journey-walk" type="button" data-journey-walk aria-pressed="false">다음 장소까지 걷기</button></div>
     </header>
     <div class="cliff-hint" data-hint></div>
     <button class="cliff-icon cliff-settings" type="button" data-settings aria-label="동행 및 조작 설정" aria-expanded="false">${icon('settings')}</button>
@@ -401,9 +401,12 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const journeyLabel = ui.querySelector('[data-journey-label]');
   const journeyNext = ui.querySelector('[data-journey-next]');
   const journeyFill = ui.querySelector('[data-journey-fill]');
+  const journeyWalkButton = ui.querySelector('[data-journey-walk]');
   const stops = mapId === 'hill' ? terrain.checkpoints ?? [] : [];
   journey.hidden = stops.length === 0;
   let lastJourneyIndex = -1;
+  let guidedStop = null;
+  let guidedSide = -1;
   function updateJourney(currentZ){
     if(!stops.length)return;
     let reached=0;
@@ -417,6 +420,14 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     const total=stops[0].z-stops[stops.length-1].z;
     const percent=Math.min(100,Math.max(0,(stops[0].z-currentZ)/total*100));
     journeyFill.style.width=`${percent.toFixed(1)}%`;
+    if(guidedStop !== null && currentZ <= stops[guidedStop].z + 2.5) guidedStop = null;
+    const finished = reached === stops.length - 1;
+    if(journeyWalkButton.disabled !== finished) journeyWalkButton.disabled = finished;
+    const label = finished ? '학교 정류장 도착' : guidedStop !== null
+      ? `${stops[guidedStop].name}까지 걷는 중 · 멈추기` : '다음 장소까지 걷기';
+    if(journeyWalkButton.textContent !== label) journeyWalkButton.textContent = label;
+    const pressed = String(guidedStop !== null);
+    if(journeyWalkButton.getAttribute('aria-pressed') !== pressed) journeyWalkButton.setAttribute('aria-pressed', pressed);
   }
   const worldSelect = ui.querySelector('[data-world]');
   worldSelect.value = mapId;
@@ -424,6 +435,17 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     const next = new URL(location.href);
     next.searchParams.set('map', worldSelect.value);
     location.assign(next.href);
+  });
+  journeyWalkButton.addEventListener('click', () => {
+    if(!stops.length || lastJourneyIndex >= stops.length - 1) return;
+    if(guidedStop !== null) guidedStop = null;
+    else {
+      guidedStop = Math.max(1, lastJourneyIndex + 1);
+      guidedSide = Math.abs(x - terrain.routeX(z, -1)) <= Math.abs(x - terrain.routeX(z, 1)) ? -1 : 1;
+      destination = null;
+      if(pose === 'sit' || pose === 'lie') setPose('idle');
+    }
+    fadeHint();
   });
   const hint = ui.querySelector('[data-hint]');
   const stick = ui.querySelector('[data-stick]');
@@ -490,6 +512,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   function doAction(action) {
     if (action === 'sit' || action === 'lie') {
       destination = null;
+      guidedStop = null;
       setPose(pose === action ? 'idle' : action);
     } else if (action === 'greet') {
       if (pose === 'lie') setPose('sit');
@@ -509,6 +532,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     settings.setAttribute('aria-expanded', String(open));
     if (open) {
       keys.clear();
+      guidedStop = null;
       joystick.id = null;
       joystick.x = joystick.y = 0;
       stickThumb.style.transform = '';
@@ -527,6 +551,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       event.preventDefault();
       keys.add(event.code);
       destination = null;
+      guidedStop = null;
       fadeHint();
     }
     if (!event.repeat && actionKeys[event.code]) doAction(actionKeys[event.code]);
@@ -580,6 +605,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     const point = pointOnTerrain(event);
     if (point && terrain.canWalk(point.x, point.z)) {
       destination = { x: point.x, z: point.z };
+      guidedStop = null;
       fadeHint();
     }
   });
@@ -607,6 +633,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     joystick.id = event.pointerId;
     stick.setPointerCapture(event.pointerId);
     destination = null;
+    guidedStop = null;
     fadeHint();
     moveStick(event);
   });
@@ -745,6 +772,22 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       dx *= speed / divisor;
       dz *= speed / divisor;
       destination = null;
+      guidedStop = null;
+    } else if (guidedStop !== null) {
+      // Follow a sidewalk rather than cutting straight through a curved road.
+      const targetZ = stops[guidedStop].z;
+      const lookaheadZ = Math.max(targetZ, z - 3.2);
+      dx = terrain.routeX(lookaheadZ, guidedSide) - x;
+      dz = lookaheadZ - z;
+      const length = Math.hypot(dx, dz);
+      if(length > 0.001) {
+        const ratio = Math.min(1, speed / length);
+        dx *= ratio;
+        dz *= ratio;
+      } else {
+        guidedStop = null;
+        dx = dz = 0;
+      }
     } else if (destination) {
       dx = destination.x - x;
       dz = destination.z - z;
@@ -766,6 +809,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
         setPose('walk');
       } else {
         destination = null;
+        guidedStop = null;
         if (pose === 'walk') setPose('idle');
       }
     } else if (pose === 'walk') {

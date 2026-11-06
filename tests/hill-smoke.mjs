@@ -15,7 +15,8 @@ const routeLogic=hillCode.slice(hillCode.indexOf('const center ='),hillCode.inde
 assert.ok(routeLogic.includes('function canWalk'),'walkability logic missing');
 const {center,canWalk}=new Function(routeLogic+';return {center,canWalk};')();
 for(let z=77;z>=-67;z-=.5){
-  assert.ok(canWalk(center(z)-5.35,z),'walking path blocked at z='+z);
+  assert.ok(canWalk(center(z)-5.35,z),'left sidewalk blocked at z='+z);
+  assert.ok(canWalk(center(z)+5.35,z),'right sidewalk blocked at z='+z);
 }
 console.log('PASS: all five landmarks and a continuous pedestrian route');
 
@@ -82,6 +83,15 @@ try {
   // fighting over a software-rendered GPU on GitHub-hosted CI runners.
   const previewDesktop=await preparePage(browser,{viewport:{width:1365,height:768}});
   await previewDesktop.page.screenshot({path:'artifacts/hill-desktop.png',timeout:30000});
+  const walkButton = previewDesktop.page.locator('[data-journey-walk]');
+  assert.equal(await walkButton.isVisible(), true, 'guided hill walking button visible');
+  await walkButton.click();
+  await waitUntil(async () => parseFloat(await previewDesktop.page.locator('[data-journey-fill]').evaluate(node => node.style.width)) > .5, 'guided uphill travel');
+  assert.equal(await walkButton.getAttribute('aria-pressed'), 'true');
+  // A manual WASD input must immediately cancel the optional route assistant.
+  await previewDesktop.page.keyboard.down('KeyW');
+  await waitUntil(async () => (await walkButton.getAttribute('aria-pressed')) === 'false', 'manual walk override');
+  await previewDesktop.page.keyboard.up('KeyW');
   await previewDesktop.context.close();
   const previewMobile=await preparePage(browser,{
     viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true
