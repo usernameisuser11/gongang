@@ -138,6 +138,8 @@ try {
   const schoolGuide=await preparePage(browser,{viewport:{width:1100,height:680}},'elementary',true);
   const guideButton=schoolGuide.page.locator('[data-journey-walk]');
   await guideButton.click();
+  await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='true',
+    'guided school walk activation',25000);
   let diagnostics=0;
   await waitUntil(async()=>{
     const pct=parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width));
@@ -149,6 +151,8 @@ try {
   await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='false',
     'finish the school junction guided stage',35000);
   await guideButton.click(); // Continue from the junction onto the shop climb.
+  await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='true',
+    'guided restaurant stage activation',25000);
   await waitUntil(async()=>parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width))>65,
     'guided arrival on the steeper restaurant road',60000);
   await schoolGuide.page.screenshot({path:'artifacts/after-school-guided-turn.png',timeout:30000});
