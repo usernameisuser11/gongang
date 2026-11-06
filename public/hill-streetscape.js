@@ -238,10 +238,10 @@ function entranceMarker(scene,C,H){
 function bus(scene,C,H){
   // Compact Seoul green route 7016 bus near the upper bend; no animated traffic
   // or physics in the peaceful walking experience.
-  const z=-38,side=1,x=C(z)+1.85;
+  const z=-79,side=1,x=C(z)+1.85;
   const group=new T.Group();
   group.position.set(x,H(x,z)+.14,z);
-  const pitch=Math.atan(.252+.019*Math.cos((z+9)*.053));
+  const pitch=Math.atan((H(x,z-2)-H(x,z+2))/4);
   group.rotation.x=pitch;
   scene.add(group);
   const green=new T.MeshStandardMaterial({color:'#75a83e',roughness:.55,metalness:.05});
