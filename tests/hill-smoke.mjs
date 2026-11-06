@@ -8,27 +8,37 @@ const routeCode=readFileSync(new URL('../public/hill-route.js',import.meta.url),
 const checkpointMatch=routeCode.match(/export const HILL_CHECKPOINTS = Object\.freeze\((\[[\s\S]*?\])\);/);
 assert.ok(checkpointMatch,'commute checkpoint list missing');
 const checkpoints=new Function('return '+checkpointMatch[1])();
-assert.deepEqual(checkpoints.map(p=>p.id),['start','entrance','lower-slope','elementary','yungane','budaetong','university']);
+assert.deepEqual(checkpoints.map(p=>p.id),['start','entrance','lower-slope','elementary','school-turn','steep-shops','yungane','budaetong','university']);
 assert.equal(checkpoints[0].z,215,'default spawn must start at the true bottom of the extended hill');
 assert.ok(checkpoints.every((p,i)=>i===0 || checkpoints[i-1].z>p.z),'landmark order');
 const hillCode=readFileSync(new URL('../public/hill.js',import.meta.url),'utf8');
 const routeLogic=hillCode.slice(hillCode.indexOf('const center ='),hillCode.indexOf('const c ='));
 assert.ok(routeLogic.includes('function canWalk'),'walkability logic missing');
-const {center,canWalk,straightFork}=new Function(routeLogic+';return {center,canWalk,straightFork};')();
+const {center,canWalk,straightFork,sidePoint,climb,closestRouteZ}=new Function(routeLogic+';return {center,canWalk,straightFork,sidePoint,climb,closestRouteZ};')();
 // Start on a calm lower straight, then clearly take the LEFT uphill branch.
 assert.ok(Math.abs(center(215)-center(177))<6,'lower road must begin nearly straight');
 assert.ok(center(160)-center(102)>24,'commute must turn left after the fork');
 assert.ok(Math.abs(center(160)-straightFork(160))<4,'left branch and through street meet');
 assert.ok(straightFork(104)-center(104)>20,'straight road must separate to the right');
+assert.ok(center(56)-center(30)>20,'a SECOND left turn must follow the primary school');
+assert.ok(Math.abs(center(28)-center(5))<6,'restaurant lane should straighten after school turn');
+const gentleGrade=(climb(150)-climb(175))/25;
+const restaurantGrade=(climb(10)-climb(34))/24;
+const arrivalGrade=(climb(-70)-climb(-90))/20;
+assert.ok(restaurantGrade>gentleGrade*1.7,'shop street must be substantially steeper than lower approach');
+assert.ok(restaurantGrade>arrivalGrade*1.55,'grade must ease before the 7016 bus stop');
+assert.ok(Math.abs(closestRouteZ(center(44),44)-44)<.15,'route projection must remain continuous');
 const approachCode=readFileSync(new URL('../public/hill-approach.js',import.meta.url),'utf8');
 assert.ok(approachCode.includes('function straightContinuation'),'forked street missing');
 assert.ok(!approachCode.includes('parkedCar(scene,center,heightAt,194'),'start must remain free of cars');
-for(let z=checkpoints[0].z;z>=-67;z-=.5){
-  assert.ok(canWalk(center(z)-5.35,z),'left sidewalk blocked at z='+z);
-  assert.ok(canWalk(center(z)+5.35,z),'right sidewalk blocked at z='+z);
+for(let z=checkpoints[0].z;z>=-73;z-=.5){
+  for(const side of [-1,1]){
+    const p=sidePoint(z,side*5.35);
+    assert.ok(canWalk(p.x,p.z),'sidewalk blocked after bend at z='+z+' side='+side);
+  }
 }
 assert.ok(hillCode.includes('addLowerHillApproach'),'lower approach must be rendered');
-console.log('PASS: seven landmarks, left fork, unobstructed spawn, and a continuous uphill route');
+console.log('PASS: nine landmarks, second left turn, steep shop climb, 7016 arrival and both sidewalks');
 
 const base = 'http://127.0.0.1:8787';
 mkdirSync('artifacts', { recursive: true });

@@ -774,11 +774,16 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       destination = null;
       guidedStop = null;
     } else if (guidedStop !== null) {
-      // Follow a sidewalk rather than cutting straight through a curved road.
+      // Guide by the parametric sidewalk arc, including the left turn AFTER the
+      // primary school. Looking ahead on the centerline prevents corner-cutting.
       const targetZ = stops[guidedStop].z;
-      const lookaheadZ = Math.max(targetZ, z - 3.2);
-      dx = terrain.routeX(lookaheadZ, guidedSide) - x;
-      dz = lookaheadZ - z;
+      const routeZ = terrain.progressZ?.(x,z) ?? z;
+      const lookaheadZ = Math.max(targetZ, routeZ - 2.2);
+      const next = terrain.routePoint
+        ? terrain.routePoint(lookaheadZ,guidedSide)
+        : {x:terrain.routeX(lookaheadZ,guidedSide),z:lookaheadZ};
+      dx = next.x - x;
+      dz = next.z - z;
       const length = Math.hypot(dx, dz);
       if(length > 0.001) {
         const ratio = Math.min(1, speed / length);
@@ -821,7 +826,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     }
 
     const floor = terrain.heightAt(x, z);
-    updateJourney(z);
+    updateJourney(terrain.progressZ?.(x,z) ?? z);
     local.group.position.set(x, floor, z);
     local.group.rotation.y = bodyYaw;
     local.animate(pose, time, dt);

@@ -10,20 +10,46 @@ const edgeA = -112, edgeB = 245;
 // Street-video path: below the junction the road is nearly straight, then the
 // Sangmyung uphill route branches LEFT towards the school. Going uphill is -Z.
 // Keep the entire old upper road untouched past z=86.
-const center = z => {
-  const t=Math.max(0,Math.min(1,(z-86)/83));
-  const turn=t*t*(3-2*t);
-  return 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7)+41*turn;
+const clampRoute = (v,a,b) => Math.max(a,Math.min(b,v));
+const smoothRoute = t => {t=clampRoute(t,0,1);return t*t*(3-2*t);};
+const oldUpperCenter = z => 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7);
+// Descending Z represents an uphill walk. The first fork at z=169 sends the
+// route left; AFTER the school at z≈65 another distinct left turn occurs.
+// That second bend leads onto the restaurant street, as in the supplied video.
+const center = z => oldUpperCenter(z)
+  + 41*smoothRoute((z-86)/83)
+  - 31*smoothRoute((60-z)/28);
+const centerSlope = z => (center(z+.06)-center(z-.06))/.12;
+const sidePoint = (s,off) => {
+  const d=centerSlope(s),normal=1/Math.hypot(1,d);
+  return {x:center(s)+off*normal,z:s-off*d*normal};
 };
-// A separate non-traversable straight continuation makes the fork readable.
+const closestRouteZ = (x,z) => {
+  let best=clampRoute(z,-105,230),bestDistance=Infinity;
+  for(let i=-6;i<=6;i++) {
+    const s=clampRoute(z+i*1.55,-105,230);
+    const dist=(center(s)-x)**2+(s-z)**2;
+    if(dist<bestDistance){bestDistance=dist;best=s;}
+  }
+  for(let i=0;i<4;i++) {
+    const d=centerSlope(best);
+    const step=((center(best)-x)*d+(best-z))/(1+d*d);
+    best=clampRoute(best-clampRoute(step,-2.0,2.0),-105,230);
+  }
+  return best;
+};
 const straightFork = z => center(169)+(169-z)*.035;
-// Keep the original upper incline intact; start the extended lower section with a
-// gentler approach, without a seam in the terrain at the old bottom (z=86).
-const climb = z => 7.2 + (49-Math.min(z,86))*.252 - Math.max(0,z-86)*.14
-  + .36*Math.sin((z+9)*.053);
+// Continuous grade profile. The lower street is gentle, then becomes
+// noticeably steeper AFTER the school; it eases near the 7016 bus stop.
+const gradeRamp = (distance,width) => distance<=0?0:distance<width
+  ? distance*distance/(2*width) : distance-width/2;
+const climb = z => 7.2+(49-Math.min(z,86))*.252 - Math.max(0,z-86)*.14
+  + .36*Math.sin((z+9)*.053)
+  + .15*gradeRamp(60-z,12)
+  - .28*gradeRamp(-12-z,14);
 
 function groundHeight(x,z) {
-  const onRoute=Math.abs(x-center(z));
+  const onRoute=Math.abs(x-center(z))/Math.hypot(1,centerSlope(z));
   // The right-hand through street has its own terrain corridor; otherwise
   // its surface rises into a hillside after the left turn.
   const forkWeight=smooth(91,119,z)*(1-smooth(153,169,z));
@@ -39,9 +65,12 @@ function groundHeight(x,z) {
   return climb(z)+slope*lowerShoulder+(fbm(x*.13+11,z*.12)-.5)*.72*smooth(7,14,dx);
 }
 function canWalk(x,z) {
-  // Keep the parked 7016 bus solid while the pedestrian path remains open.
-  const busZ=-38, busX=center(busZ)+1.85;
-  return z > -98 && z < 233 && Math.abs(x-center(z)) < 8.12
+  // Work in road-normal coordinates so the two sharp bends remain traversable.
+  // The public road continuation is deliberately not a valid walking shortcut.
+  const s=closestRouteZ(x,z);
+  const distance=Math.hypot(x-center(s),z-s);
+  const busZ=-79, busX=center(busZ)+1.85;
+  return s>-98 && s<233 && distance<8.15
     && !(Math.abs(x-busX)<1.30 && Math.abs(z-busZ)<3.52);
 }
 const c = v => new T.Color(v);
@@ -53,8 +82,8 @@ function land(scene) {
   for(let j=0;j<nz;j++) {
     const z=edgeA+(edgeB-edgeA)*j/(nz-1);
     for(let i=0;i<nx;i++) {
-      const x=-75+160*i/(nx-1),y=groundHeight(x,z);
-      const d=Math.abs(x-center(z)),grain=fbm(x*.085+12,z*.092+5);
+      const x=-85+170*i/(nx-1),y=groundHeight(x,z);
+      const d=Math.abs(x-center(z))/Math.hypot(1,centerSlope(z)),grain=fbm(x*.085+12,z*.092+5);
       color.copy(meadow).lerp(leaf,.15+.6*grain).lerp(moss,.30*fbm(x*.035,z*.07));
       color.lerp(stone,Math.max(0,smooth(16,37,d))*.22);
       color.multiplyScalar(.9+noise(x*.47,z*.51)*.19);
@@ -76,10 +105,10 @@ function ribbon(scene,left,right,z0,z1,mat,lift=.065) {
   const positions=[],uv=[],idx=[];
   const steps=324;
   for(let j=0;j<=steps;j++) {
-    const z=z0+(z1-z0)*j/steps, mid=center(z);
+    const z=z0+(z1-z0)*j/steps;
     for(const off of [left,right]){
-      const x=mid+off;
-      positions.push(x,groundHeight(x,z)+lift,z);
+      const p=sidePoint(z,off);
+      positions.push(p.x,groundHeight(p.x,p.z)+lift,p.z);
       uv.push(off===left?0:1,(z-z0)/2.1);
     }
     if(j<steps){const i=j*2;idx.push(i,i+2,i+1,i+1,i+2,i+3);}
@@ -255,19 +284,22 @@ export function makeHill(scene,time,compact=false) {
   addHillCommute(scene,{center,heightAt:groundHeight});
   // Keep travelers' feet aligned to the raised asphalt and pavement meshes.
   const walkingHeight=(x,z)=>{
-    const offset=Math.abs(x-center(z));
+    const s=closestRouteZ(x,z);
+    const offset=Math.hypot(x-center(s),z-s);
     return groundHeight(x,z)+(offset<=3.95?.095:offset>=4.2&&offset<=6.7?.16:.02);
   };
   const terrain={
-    spawn:{x:center(215)-5.35,z:215},
+    spawn:sidePoint(215,-5.35),
     spawnFor(id){
       const point=HILL_CHECKPOINTS.find(p=>p.id===id);
-      return point ? {x:center(point.z)-5.35,z:point.z} : this.spawn;
+      return point ? sidePoint(point.z,-5.35) : this.spawn;
     },
     checkpoints:HILL_CHECKPOINTS,
     heightAt:walkingHeight,canWalk,
-    // The left and right sidewalk centerlines stay clear of parked vehicles.
-    routeX(z, side = -1){ return center(z) + (side < 0 ? -5.35 : 5.35); },
+    // A bend-safe sidewalk reference; used by guided walking and previews.
+    routePoint(s,side = -1){ return sidePoint(s,side < 0 ? -5.35 : 5.35); },
+    routeX(s,side = -1){ return sidePoint(s,side < 0 ? -5.35 : 5.35).x; },
+    progressZ(x,z){ return closestRouteZ(x,z); },
     pick(raycaster){return raycaster.intersectObject(surface,false)[0]?.point??null}
   };
   return terrain;
