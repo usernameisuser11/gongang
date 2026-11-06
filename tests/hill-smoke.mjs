@@ -12,7 +12,7 @@ assert.deepEqual(checkpoints.map(p=>p.id),['start','entrance','lower-slope','ele
 assert.equal(checkpoints[0].z,215,'default spawn must start at the true bottom of the extended hill');
 assert.ok(checkpoints.every((p,i)=>i===0 || checkpoints[i-1].z>p.z),'landmark order');
 const hillCode=readFileSync(new URL('../public/hill.js',import.meta.url),'utf8');
-const routeLogic=hillCode.slice(hillCode.indexOf('const center ='),hillCode.indexOf('const c ='));
+const routeLogic=hillCode.slice(hillCode.indexOf('const clampRoute ='),hillCode.indexOf('const c ='));
 assert.ok(routeLogic.includes('function canWalk'),'walkability logic missing');
 const {center,canWalk,straightFork,sidePoint,climb,closestRouteZ}=new Function(routeLogic+';return {center,canWalk,straightFork,sidePoint,climb,closestRouteZ};')();
 // Start on a calm lower straight, then clearly take the LEFT uphill branch.
@@ -24,7 +24,7 @@ assert.ok(center(56)-center(30)>20,'a SECOND left turn must follow the primary s
 assert.ok(Math.abs(center(28)-center(5))<6,'restaurant lane should straighten after school turn');
 const gentleGrade=(climb(150)-climb(175))/25;
 const restaurantGrade=(climb(10)-climb(34))/24;
-const arrivalGrade=(climb(-70)-climb(-90))/20;
+const arrivalGrade=(climb(-90)-climb(-70))/20;
 assert.ok(restaurantGrade>gentleGrade*1.7,'shop street must be substantially steeper than lower approach');
 assert.ok(restaurantGrade>arrivalGrade*1.55,'grade must ease before the 7016 bus stop');
 assert.ok(Math.abs(closestRouteZ(center(44),44)-44)<.15,'route projection must remain continuous');
@@ -103,7 +103,7 @@ try {
   // fighting over a software-rendered GPU on GitHub-hosted CI runners.
   const previewDesktop=await preparePage(browser,{viewport:{width:1365,height:768}});
   await previewDesktop.page.screenshot({path:'artifacts/hill-desktop.png',timeout:30000});
-  assert.match(await previewDesktop.page.locator('[data-journey-label]').innerText(),/1\/7.*언덕 맨 아래/);
+  assert.match(await previewDesktop.page.locator('[data-journey-label]').innerText(),/1\/9.*언덕 맨 아래/);
   assert.equal(parseFloat(await previewDesktop.page.locator('[data-journey-fill]').evaluate(node=>node.style.width)),0);
   const walkButton = previewDesktop.page.locator('[data-journey-walk]');
   assert.equal(await walkButton.isVisible(), true, 'guided hill walking button visible');
@@ -123,7 +123,7 @@ try {
 
   // Capture the real route's landmark views separately. All stops share the
   // same continuous world; the stop URL is a preview/deep-link spawn only.
-  for(const id of ['entrance','lower-slope','elementary','yungane','budaetong','university']){
+  for(const id of ['entrance','lower-slope','elementary','school-turn','steep-shops','yungane','budaetong','university']){
     const item=await preparePage(browser,{viewport:{width:1200,height:740}},id);
     await item.page.screenshot({path:'artifacts/stop-'+id+'.png',timeout:30000});
     await item.context.close();
