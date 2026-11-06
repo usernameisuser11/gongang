@@ -4,6 +4,7 @@ on:
     branches:
       - feature/sangmyung-hill-and-worlds
       - feature/sangmyung-left-turn
+      - feature/school-turn-steep-shops-7016
   workflow_dispatch:
 
 permissions:
