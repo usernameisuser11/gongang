@@ -18,7 +18,7 @@ const oldUpperCenter = z => 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7);
 // That second bend leads onto the restaurant street, as in the supplied video.
 const center = z => oldUpperCenter(z)
   + 41*smoothRoute((z-86)/83)
-  - 31*smoothRoute((60-z)/28);
+  - 31*smoothRoute((64-z)/40);
 const centerSlope = z => (center(z+.06)-center(z-.06))/.12;
 const sidePoint = (s,off) => {
   const d=centerSlope(s),normal=1/Math.hypot(1,d);
