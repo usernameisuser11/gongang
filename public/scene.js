@@ -56,7 +56,7 @@ function start() {
     spawn:mapId === 'hill' ? terrain.spawnFor(requestedStop) : (portrait?{x:-13.3,z:19.5}:{x:-10.2,z:17.8}),
     initialYaw:mapId === 'hill' ? terrain.forwardYawAt(terrain.checkpoints.find(p=>p.id===requestedStop)?.z ?? 215) : (portrait?.165:.145),
     view:mapId === 'hill'
-      ? {distance:portrait?7.5:9.1,pitch:.13,height:1.65,aimHeight:1.53,scale:1.01,speed:smokeWalk?19:3.65}
+      ? {distance:portrait?7.5:9.1,pitch:.13,height:1.65,aimHeight:1.53,scale:1.01,speed:smokeWalk?37:3.65}
       : {distance:portrait?8.4:9.8,pitch:portrait?.135:.113,height:portrait?1.66:1.78,
           aimHeight:portrait?1.68:1.83,scale:1.01,speed:3.65}
   });
