@@ -95,35 +95,57 @@ function canvasSign(scene,title,subtitle,x,y,z,width=3.9,height=1.30){
   const sign=new T.Mesh(new T.PlaneGeometry(width,height),new T.MeshBasicMaterial({map:tex,side:T.DoubleSide}));
   sign.position.set(x,y,z);scene.add(sign);
 }
-function baseIntersection(scene,C,H){
-  // Where the visitor enters Hongjimun 2-gil from the lower fork: a descending
-  // road heads left while the main lane and walkable sidewalk turn uphill.
-  raisedStrip(scene,C,H,170,231,t=>-4.5-20*t,t=>3.05-20*t,mats.road,.120);
-  raisedStrip(scene,C,H,170,231,t=>-8.0-20*t,t=>-4.7-20*t,mats.concrete,.160);
-  // A subdued brick-red safety section and crossings like the street photos.
-  raisedStrip(scene,C,H,183,195,()=>-3.91,()=>3.91,mats.red,.123);
-  slopeMark(scene,C,H,178,1.9);
-  slopeMark(scene,C,H,203,1.35);
-  for(const z of [210,200,190]){
-    const x=C(z)+3.93,y=H(x,z);
-    cube(mats.white,x,y+.22,z,.13,.12,2.0);
+function cable(scene,a,b,material,r=.046){
+  const delta=b.clone().sub(a),length=delta.length();
+  const rail=new T.Mesh(new T.CylinderGeometry(r,r,length,7),material);
+  rail.position.copy(a).addScaledVector(delta,.5);
+  rail.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize());
+  scene.add(rail);
+}
+function lowerStreet(scene,C,H){
+  // Street-view ~00:04-00:22: calm approach with railings, not an open fan
+  // of polygons beneath the feet. The main asphalt/pavement comes from hill.js.
+  // The protection-zone color lives ONLY on the carriageway at the junction.
+  raisedStrip(scene,C,H,181,186,()=>-3.72,()=>3.72,mats.red,.121);
+  slopeMark(scene,C,H,173,1.45);
+  slopeMark(scene,C,H,201,1.15);
+  for(const z of [203,192,178]){
+    const x=C(z)+3.95,y=H(x,z);
+    cube(mats.white,x,y+.16,z,.12,.08,1.0);
   }
-  // Bridge-side steel barriers on the left; keep the sidewalk center open.
-  for(let z=166;z<=217;z+=2.9){
-    const x=C(z)-8.05,ground=H(x,z);
-    cube(mats.rail,x,ground+.61,z,.095,1.23,.095);
+  // Bridge handrail follows the actual slope, not floating horizontal boxes.
+  const posts=[];
+  for(let z=174;z<=222;z+=3.0){
+    const x=C(z)-8.05,y=H(x,z);
+    posts.push({x,y,z});
+    cube(mats.rail,x,y+.70,z,.09,1.40,.09);
   }
-  for(let z=166;z<=213;z+=4.4){
-    const end=Math.min(217,z+4.4),mid=(z+end)*.5,x=C(mid)-8.05;
-    const ground=H(x,mid);
-    cube(mats.rail,x,ground+.98,mid,.075,.075,end-z+.1);
-    cube(mats.rail,x,ground+.56,mid,.055,.055,end-z+.1);
+  for(let j=1;j<posts.length;j++){
+    const a=posts[j-1],b=posts[j];
+    for(const height of [.60,1.08]){
+      cable(scene,new T.Vector3(a.x,a.y+height,a.z),
+        new T.Vector3(b.x,b.y+height,b.z),mats.rail,.04);
+    }
   }
+}
+function straightContinuation(scene,C,H){
+  // Street-view ~00:28: at the red-paved fork the photographed commute takes
+  // the LEFT-hand rising road. The visible straight street is NOT the route.
+  // The left road is the shared curved ribbon from hill.js; this is a separate
+  // right-hand continuation joining at z≈155.
+  raisedStrip(scene,C,H,99,159,()=>-3.25,()=>3.25,mats.road,.112);
+  raisedStrip(scene,C,H,99,157,()=>3.47,()=>5.70,mats.concrete,.160);
+  raisedStrip(scene,C,H,99,157,()=>-5.70,()=>-3.47,mats.concrete,.160);
+  raisedStrip(scene,C,H,104,146,()=>-.045,()=>.045,mats.white,.135);
+  // A little warning at the split, and narrower red safety paint behind it.
+  const signZ=142,signX=C(signZ)+7.45,signY=H(signX,signZ);
+  cube(mats.rail,signX,signY+1.90,signZ,.11,3.80,.11);
+  canvasSign(scene,'좌측 상명대','통학로 · 서행',signX-.25,signY+3.45,signZ,3.25,1.08);
 }
 function rightRetainingWall(scene,C,H){
   // The tall pale right-hand wall in the second street-view photograph, with
   // repeated joints and a narrow safety rail above the pedestrian sidewalk.
-  const n=70,z0=93,z1=164;
+  const n=65,z0=155,z1=207;
   const vertices=[],indices=[],tops=[];
   for(let i=0;i<=n;i++){
     const z=z0+(z1-z0)*i/n,x=C(z)+9.26,y=H(x,z)-.2;
@@ -142,14 +164,15 @@ function rightRetainingWall(scene,C,H){
     const p=tops[i],q=tops[Math.min(n,i+5)];
     cube(mats.concrete,p.x,p.y-.01,p.z,.27,.19,1.1);
     cube(mats.rail,p.x,p.y+.47,p.z,.075,.93,.075);
-    if(i<n)cube(mats.rail,(p.x+q.x)/2,(p.y+q.y)/2+.89,(p.z+q.z)/2,.07,.07,q.z-p.z);
+    if(i<n) cable(scene,
+      new T.Vector3(p.x,p.y+.89,p.z),new T.Vector3(q.x,q.y+.89,q.z),mats.rail,.042);
   }
   // Slope-side trees peeking over the retaining wall.
   const random=rng(4908);
   const leaves=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),mats.foliage,16);
   const t=new T.Object3D();
   for(let i=0;i<16;i++){
-    const z=100+i*3.85+random()*1.7,x=C(z)+13.8+random()*3.6,y=H(x,z);
+    const z=158+i*2.88+random()*1.7,x=C(z)+13.8+random()*3.6,y=H(x,z);
     t.position.set(x,y+3.9,z);
     t.scale.set(1.65+random()*.9,2.6+random()*.9,2.1+random()*.7);
     t.rotation.set(.1,random()*3.0,.05);
@@ -165,11 +188,11 @@ function lowShops(scene,C,H){
     new T.MeshStandardMaterial({color:'#a7b8b6',roughness:.93})
   ];
   for(const [k,z,side,offset,width,depth,ht] of [
-    [0,167,1,18.8,11,14,9.8],
-    [1,144,-1,17.1,9.6,13,9.6],
-    [0,124,-1,17.8,10.4,13,10.8],
-    [2,104,-1,17.1,10.2,12,8.7],
-    [1,88,-1,19.6,9.1,11,8.2]
+    [0,204,-1,18.7,11.0,14,9.8],
+    [1,176,-1,17.1,9.6,13,9.6],
+    [2,137,1,29.0,17.0,14,11.8],
+    [0,114,-1,17.8,10.4,13,10.8],
+    [2,91,-1,19.6,9.1,11,8.2]
   ]){
     const x=C(z)+side*offset,ground=H(x,z);
     cube(mats.concrete,x,ground-.46,z,width+.2,1.2,depth+.25);
@@ -247,16 +270,14 @@ function parkedCar(scene,C,H,z,side,color){
   }
   scene.add(group);
 }
-export function addLowerHillApproach(scene,{center,heightAt,compact=false}){
-  baseIntersection(scene,center,heightAt);
+export function addLowerHillApproach(scene,{center,straightFork,heightAt,compact=false}){
+  lowerStreet(scene,center,heightAt);
+  straightContinuation(scene,straightFork,heightAt);
   rightRetainingWall(scene,center,heightAt);
   lowShops(scene,center,heightAt);
   roadFurniture(scene,center,heightAt);
-  if(!compact){
-    parkedCar(scene,center,heightAt,194,-1,'#f1f1eb');
-    parkedCar(scene,center,heightAt,147,1,'#e8ebea');
-  }else{
-    parkedCar(scene,center,heightAt,147,1,'#e8ebea');
-  }
+  // No car beside the starting traveler. A stationary car remains farther up
+  // the non-traversable branch as scenery; nobody can walk through it.
+  if(!compact) parkedCar(scene,straightFork,heightAt,110,1,'#e8ebea');
   flush(scene);
 }
