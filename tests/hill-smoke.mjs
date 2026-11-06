@@ -32,6 +32,20 @@ const arrivalGrade=(climb(-90)-climb(-70))/20;
 assert.ok(restaurantGrade>gentleGrade*1.7,'shop street must be substantially steeper than lower approach');
 assert.ok(restaurantGrade>arrivalGrade*1.55,'grade must ease before the 7016 bus stop');
 assert.ok(Math.abs(closestRouteZ(center(44),44)-44)<.15,'route projection must remain continuous');
+// The inside sidewalk must never fold back on itself at the school bend.
+// Exercise normal walking speed, rather than relying only on static checkpoints.
+let probe=sidePoint(81,-5.35);
+for(let i=0;i<320;i++){
+  const routeZ=closestRouteZ(probe.x,probe.z);
+  if(routeZ<45.5)break;
+  const target=sidePoint(Math.max(43,routeZ-2.2),-5.35);
+  const distance=Math.hypot(target.x-probe.x,target.z-probe.z);
+  const ratio=distance>.0001?Math.min(1,3.65*.055/distance):0;
+  const x=probe.x+(target.x-probe.x)*ratio,z=probe.z+(target.z-probe.z)*ratio;
+  assert.ok(canWalk(x,z),'guided walker hit blocked terrain on school turn');
+  probe={x,z};
+}
+assert.ok(closestRouteZ(probe.x,probe.z)<45.5,'school turn must remain passable at normal walk speed');
 const approachCode=readFileSync(new URL('../public/hill-approach.js',import.meta.url),'utf8');
 assert.ok(approachCode.includes('function straightContinuation'),'forked street missing');
 assert.ok(!approachCode.includes('parkedCar(scene,center,heightAt,194'),'start must remain free of cars');
