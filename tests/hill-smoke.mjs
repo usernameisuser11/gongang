@@ -66,7 +66,7 @@ async function waitServer() {
   throw new Error('Timed out waiting for local Cloudflare Worker: ' + logs.slice(-4000));
 }
 const errors = [];
-async function preparePage(browser, options, stop = '') {
+async function preparePage(browser, options, stop = '', smokeWalk = false) {
   const context = await browser.newContext(options);
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(String(error)));
@@ -79,7 +79,7 @@ async function preparePage(browser, options, stop = '') {
     });
   });
   // WebGL setup may run synchronously before DOMContentLoaded on shared CI GPUs.
-  const url = base + '/?map=hill' + (stop ? '&stop=' + encodeURIComponent(stop) : '');
+  const url = base + '/?map=hill' + (stop ? '&stop=' + encodeURIComponent(stop) : '') + (smokeWalk ? '&smokeWalk=1' : '');
   await page.goto(url, { waitUntil: 'commit', timeout: 45000 });
   await page.locator('#viewport[data-ready="true"]').waitFor({ state: 'attached', timeout: 45000 });
   await page.locator('[data-world]').waitFor();
@@ -135,7 +135,7 @@ try {
 
   // From the school, the guided walker must actually curve left and enter the
   // steep shop lane without stopping or walking into the straight side street.
-  const schoolGuide=await preparePage(browser,{viewport:{width:1100,height:680}},'elementary');
+  const schoolGuide=await preparePage(browser,{viewport:{width:1100,height:680}},'elementary',true);
   const guideButton=schoolGuide.page.locator('[data-journey-walk]');
   await guideButton.click();
   await waitUntil(async()=>parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width))>59,
