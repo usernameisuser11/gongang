@@ -27,6 +27,7 @@ jobs:
       - name: Check modules syntax
         run: |
           node --check public/hill.js
+          node --check public/hill-approach.js
           node --check public/hill-detail.js
           node --check public/hill-streetscape.js
           node --check public/hill-route.js

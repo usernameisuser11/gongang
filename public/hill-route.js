@@ -4,7 +4,9 @@ import * as T from 'three';
 // NOT a georeferenced or measured reconstruction. School (no. 1), restaurant block
 // (no. 7), and university (no. 20) follow their verified address order.
 export const HILL_CHECKPOINTS = Object.freeze([
-  { id: 'start', name: '언덕 아래', z: 77, caption: '등굣길 시작' },
+  { id: 'start', name: '언덕 맨 아래', z: 215, caption: '홍지문2길 입구에서 출발' },
+  { id: 'entrance', name: '언덕 진입 삼거리', z: 177, caption: '왼쪽 난간과 어린이 보호구역 안내' },
+  { id: 'lower-slope', name: '언덕 초입', z: 111, caption: '오른쪽 옹벽을 따라 올라가는 길' },
   { id: 'elementary', name: '상명사대부속초등학교', z: 52, caption: '홍지문2길 1' },
   { id: 'yungane', name: '윤가네', z: 20, caption: '홍지문2길 7' },
   { id: 'budaetong', name: '부대통령', z: 13, caption: '윤가네와 같은 건물 · B1' },
