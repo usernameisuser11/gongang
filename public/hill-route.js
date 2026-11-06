@@ -7,10 +7,12 @@ export const HILL_CHECKPOINTS = Object.freeze([
   { id: 'start', name: '언덕 맨 아래', z: 215, caption: '홍지문2길 입구에서 출발' },
   { id: 'entrance', name: '언덕 진입 삼거리', z: 177, caption: '왼쪽 난간과 어린이 보호구역 안내' },
   { id: 'lower-slope', name: '언덕 초입', z: 111, caption: '오른쪽 옹벽을 따라 올라가는 길' },
-  { id: 'elementary', name: '상명사대부속초등학교', z: 52, caption: '홍지문2길 1' },
-  { id: 'yungane', name: '윤가네', z: 20, caption: '홍지문2길 7' },
-  { id: 'budaetong', name: '부대통령', z: 13, caption: '윤가네와 같은 건물 · B1' },
-  { id: 'university', name: '학교 정류장', z: -67, caption: '상명대학교 도착' },
+  { id: 'elementary', name: '상명사대부속초등학교', z: 81, caption: '초등학교 건물과 교문 · 홍지문2길 1' },
+  { id: 'school-turn', name: '초등학교 앞 좌회전', z: 43, caption: '왼쪽 오르막으로 진입' },
+  { id: 'steep-shops', name: '가파른 음식점 거리', z: 26, caption: '경사가 높아지는 골목' },
+  { id: 'yungane', name: '윤가네', z: 16, caption: '홍지문2길 7' },
+  { id: 'budaetong', name: '부대통령', z: 8, caption: '윤가네와 같은 건물 · B1' },
+  { id: 'university', name: '7016 정류장', z: -69, caption: '상명대학교 서울캠퍼스 도착' },
 ]);
 
 const mat = {
@@ -89,67 +91,49 @@ function posts(scene,xAt,yAt,zStart,zEnd,material,count=17,height=2.12){
   }
 }
 function primarySchool(scene,C,H){
-  // Set back from the left-hand pavement, with a gate, brick boundary and
-  // a recessed elementary building visible above the roadside wall.
-  const z=53,x=C(z)-21.2;
-  const ground=H(x,z);
-  const height=10.7;
-  box(scene,mat.school,x,ground+height*.5,z,18.8,height,29.8);
-  box(scene,mat.schoolRoof,x,ground+height+.12,z,19.8,.32,30.6);
-  box(scene,mat.schoolDark,x,ground+.17,z,19.2,.35,30.0);
-  box(scene,mat.schoolTrim,x+9.56,ground+height*.51,z,.31,height,30.2);
-
-  // Road-facing windows along the long facade (x axis normal).
-  for(let floor=0;floor<3;floor++){
-    for(let col=0;col<9;col++){
-      const zz=z+(col-4)*3.0,yy=ground+2.04+floor*2.81;
-      box(scene,mat.schoolTrim,x+9.73,yy,zz,.20,1.84,2.12);
-      box(scene,mat.schoolGlass,x+9.87,yy,zz,.23,1.58,1.88);
-      box(scene,mat.schoolDark,x+10.01,yy,zz,.23,.07,1.9);
-      box(scene,mat.schoolDark,x+10.02,yy,zz,.23,1.61,.06);
+  // Video: the primary school is passed BEFORE the second left-hand climb.
+  // The school yard is on the outside of the upcoming bend; its fence and
+  // entrance do not occlude the rising road or cut across a pedestrian path.
+  const z=72,x=C(z)+21.6,ground=H(x,z),height=10.8;
+  box(scene,mat.school,x,ground+height*.5,z,18.0,height,27.0);
+  box(scene,mat.schoolRoof,x,ground+height+.10,z,18.65,.28,27.4);
+  box(scene,mat.schoolDark,x,ground+.15,z,18.4,.32,27.3);
+  box(scene,mat.schoolTrim,x-9.18,ground+height*.50,z,.27,height,27.4);
+  // Windows look toward the uphill street; the fence follows the grade.
+  for(let floor=0;floor<3;floor++)for(let col=0;col<8;col++){
+    const zz=z+(col-3.5)*3.04,yy=ground+2.14+floor*2.76;
+    box(scene,mat.schoolTrim,x-9.35,yy,zz,.17,1.88,2.0);
+    box(scene,mat.schoolGlass,x-9.48,yy,zz,.20,1.66,1.80);
+    box(scene,mat.schoolDark,x-9.58,yy,zz,.20,.07,1.83);
+  }
+  const wallMat=new T.MeshStandardMaterial({color:'#b7a18f',side:T.DoubleSide,roughness:1});
+  for(const [from,to] of [[54,64],[74,92]]){
+    const verts=[],indices=[],sections=Math.ceil((to-from)/.8);
+    for(let i=0;i<=sections;i++){
+      const zz=from+(to-from)*i/sections;
+      const xx=C(zz)+8.9,base=H(xx,zz);
+      verts.push(xx,base-.13,zz,xx,base+1.57,zz);
+      if(i<sections){const k=2*i;indices.push(k,k+1,k+2,k+1,k+3,k+2);}
     }
+    const geo=new T.BufferGeometry();
+    geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));
+    geo.setIndex(indices);geo.computeVertexNormals();
+    const mesh=new T.Mesh(geo,wallMat);mesh.receiveShadow=true;scene.add(mesh);
   }
-
-  // A continuous wall follows the street grade; the school gate remains open.
-  const wallMat=new T.MeshStandardMaterial({color:'#b29b87',side:T.DoubleSide,roughness:1});
-  const buildWall=(from,to)=>{
-    const verts=[],uv=[],indices=[],capVerts=[],capIndices=[],segments=Math.max(6,Math.ceil(Math.abs(to-from)/.65));
-    for(let i=0;i<=segments;i++){
-      const zz=from+(to-from)*i/segments,xx=C(zz)-8.8,base=H(xx,zz);
-      const top=base+1.55;
-      verts.push(xx,base-.11,zz,xx,top,zz);
-      uv.push(i/3,0,i/3,1);
-      capVerts.push(xx-.37,top+.025,zz,xx+.37,top+.025,zz);
-      if(i<segments){
-        const k=i*2;
-        indices.push(k,k+1,k+2,k+1,k+3,k+2);
-        capIndices.push(k,k+2,k+1,k+1,k+2,k+3);
-      }
-    }
-    const wallGeo=new T.BufferGeometry();
-    wallGeo.setAttribute('position',new T.Float32BufferAttribute(verts,3));
-    wallGeo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
-    wallGeo.setIndex(indices);wallGeo.computeVertexNormals();
-    const wall=new T.Mesh(wallGeo,wallMat);wall.receiveShadow=true;scene.add(wall);
-    const capGeo=new T.BufferGeometry();
-    capGeo.setAttribute('position',new T.Float32BufferAttribute(capVerts,3));
-    capGeo.setIndex(capIndices);capGeo.computeVertexNormals();
-    scene.add(new T.Mesh(capGeo,mat.schoolTrim));
-  };
-  buildWall(28,48.2);
-  buildWall(58.8,76);
-  const gateZ=53.5,gateX=C(gateZ)-8.65,gateY=H(gateX,gateZ);
-  for(const gateOff of [-5.1,5.1]){
-    box(scene,mat.schoolDark,gateX,gateY+1.69,gateZ+gateOff,.72,3.38,.78);
+  const gateZ=69,gateX=C(gateZ)+8.85,gateY=H(gateX,gateZ);
+  for(const dz of [-4.25,4.25])
+    box(scene,mat.schoolDark,gateX,gateY+1.64,gateZ+dz,.62,3.28,.72);
+  box(scene,mat.schoolRoof,gateX,gateY+3.33,gateZ,.85,.25,9.02);
+  facadeLabel(scene,{
+    name:'상명사대부속초등학교',sub:'홍지문2길 1',
+    x:gateX-.48,y:gateY+2.55,z:gateZ,width:7.52,height:1.28,
+    bg:'#58736b',face:-1
+  });
+  for(let i=0;i<14;i++){
+    const zz=gateZ-3.50+i*.52;
+    box(scene,mat.metal,gateX,gateY+1.08,zz,.07,2.12,.07);
   }
-  box(scene,mat.schoolRoof,gateX,gateY+3.40,gateZ,.82,.30,11.2);
-  facadeLabel(scene,{name:'상명사대부속초등학교',sub:'홍지문2길 1',x:gateX+.52,y:gateY+2.78,z:gateZ,width:7.85,height:1.32,bg:'#536c66'});
-  // Vertical bars only inside the gate margins, not across the walkable sidewalk.
-  for(let i=0;i<18;i++){
-    const zz=gateZ-4.45+i*.53;
-    box(scene,mat.metal,gateX,gateY+1.06,zz,.09,2.1,.09);
-  }
-  box(scene,mat.schoolTrim,gateX,gateY+.15,gateZ,.34,.28,10.3);
+  // Keep the opening into the upcoming left turn unobstructed.
 }
 function storeBlock(scene,C,H){
   // Public records place both businesses at Hongjimun 2-gil 7; Budaetongryeong
@@ -187,8 +171,78 @@ function storeBlock(scene,C,H){
   facadeLabel(scene,{name:'부대통령 뚝배기',sub:'B1 · 홍지문2길 7',x:frontX+.48,y:y+3.63,z:bZ,width:5.20,height:1.32,bg:'#7e4637'});
   box(scene,mat.schoolTrim,frontX+.46,y+.12,z,.52,.26,depth+.9);
 }
+function schoolStraightStreet(scene,C,H,F){
+  // A separate road continues ahead after the school. The student's route is
+  // the sharply curving LEFT lane, not this secondary through street.
+  const street=new T.MeshStandardMaterial({color:'#636b68',roughness:.98,side:T.DoubleSide});
+  const pavement=new T.MeshStandardMaterial({color:'#afb3ad',roughness:1,side:T.DoubleSide});
+  const n=52;
+  for(const [a,b,mat,lift] of [[-3.75,3.75,street,.10],[-5.80,-4.05,pavement,.16],[4.05,5.8,pavement,.16]]){
+    const points=[],indices=[];
+    for(let i=0;i<=n;i++){
+      const z=27+(61-27)*i/n;
+      for(const off of [a,b]){
+        const x=F(z)+off;
+        points.push(x,H(x,z)+lift,z);
+      }
+      if(i<n){const k=i*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}
+    }
+    const geo=new T.BufferGeometry();
+    geo.setAttribute('position',new T.Float32BufferAttribute(points,3));
+    geo.setIndex(indices);geo.computeVertexNormals();
+    const m=new T.Mesh(geo,mat);m.receiveShadow=true;scene.add(m);
+  }
+  for(const z of [32,38,44]){
+    const x=F(z),y=H(x,z)+.14;
+    box(scene,mat.schoolTrim,x,y,z,.08,.016,1.35);
+  }
+}
+function shopLane(scene,C,H){
+  // An intimate commercial street starts immediately after the left turn:
+  // tighter low-rise fronts, glass shop windows, hanging signs and a road
+  // surface which rises much faster than the lower residential approach.
+  const fronts=[
+    {z:29,side:1,name:'동네 식당',sub:'따뜻한 한 끼',tone:'#84634c',h:8.8},
+    {z:14,side:1,name:'분식 · 식사',sub:'상명 골목',tone:'#657a6b',h:9.6},
+    {z:-5,side:1,name:'작은 카페',sub:'커피와 쉼',tone:'#62777e',h:10.1},
+    {z:-13,side:-1,name:'상명 골목상가',sub:'오르막길',tone:'#77745e',h:8.7},
+  ];
+  for(const [i,entry] of fronts.entries()){
+    const {z,side,name,sub,tone,h}=entry;
+    const x=C(z)+side*(13.1+(i%2)*.9),y=H(x,z);
+    const frontX=x-side*4.50;
+    const wall=i%2?mat.school:mat.schoolTrim;
+    box(scene,mat.schoolDark,x,y-.40,z,9.2,.82,11.9);
+    box(scene,wall,x,y+h/2,z,8.9,h,11.8);
+    box(scene,mat.schoolRoof,x,y+h+.12,z,9.3,.27,12.2);
+    for(let k=-1;k<=1;k++){
+      const zz=z+k*3.15;
+      box(scene,mat.schoolTrim,frontX, y+1.73,zz,.23,3.10,2.65);
+      box(scene,mat.glass,frontX-side*.12,y+1.73,zz,.26,2.80,2.42);
+      for(let row=0;row<2;row++){
+        box(scene,mat.schoolTrim,frontX,y+5.30+row*2.14,zz,.22,1.38,2.15);
+        box(scene,mat.schoolGlass,frontX-side*.12,y+5.30+row*2.14,zz,.24,1.15,1.93);
+      }
+    }
+    box(scene,mat.shade,frontX-side*.40,y+3.55,z,.78,.21,9.00);
+    facadeLabel(scene,{name,sub,x:frontX-side*.24,y:y+4.22,z,width:6.3,height:1.27,bg:tone,face:-side});
+  }
+  // The road immediately after the turn has a short patterned safety band,
+  // without painting over the footpath.
+  const bar=new T.Mesh(new T.PlaneGeometry(7.05,1.3),
+    new T.MeshBasicMaterial({color:'#d5bf73',side:T.DoubleSide,depthWrite:false}));
+  const z=31;
+  bar.rotation.x=-Math.PI/2+Math.atan(.42);
+  bar.position.set(C(z),H(C(z),z)+.17,z);
+  scene.add(bar);
+  // Low handrails remain outside the actual pedestrian lane.
+  for(const side of [-1,1])for(let z=-19;z<=21;z+=4.5){
+    const x=C(z)+side*7.9,y=H(x,z);
+    box(scene,mat.metal,x,y+.50,z,.09,1.0,.09);
+  }
+}
 function upperStop(scene,C,H){
-  const z=-67,x=C(z)-7.55,y=H(x,z);
+  const z=-69,x=C(z)-7.55,y=H(x,z);
   // Recognizable sheltered bus bay and blue stop pole at the end of the incline.
   box(scene,mat.post,x,y+1.70,z,.14,3.4,.14);
   box(scene,mat.post,x-1.65,y+3.14,z,3.5,.15,6.8);
@@ -196,8 +250,14 @@ function upperStop(scene,C,H){
   box(scene,mat.metal,x-2.05,y+.51,z,2.28,.17,.66);
   for(const zz of [z-2.35,z+2.35])
     box(scene,mat.metal,x-2.75,y+1.62,zz,.09,3.17,.09);
-  facadeLabel(scene,{name:'상명대학교 정류장',sub:'등굣길 도착 · 홍지문2길 20',x:x+.35,y:y+2.72,z:z-3.25,width:5.1,height:1.37,bg:'#315f79'});
+  const labelX=C(z)-10.4,labelY=H(labelX,z);
+  facadeLabel(scene,{name:'7016 · 상명대',sub:'버스 정류장',x:labelX,y:labelY+2.58,z:z-3.25,width:2.9,height:.88,bg:'#315f79'});
 
+  // Forward-facing 7016 route sign matches the bus-stop sightline from below.
+  const frontSign=new T.Mesh(new T.PlaneGeometry(2.60,.82),
+    new T.MeshBasicMaterial({map:textTexture('7016','상명대학교 정류장','#eaf2f3','#2e6590'),side:T.DoubleSide}));
+  frontSign.position.set(C(z)-9.6,H(C(z)-9.6,z)+2.77,z-2.15);
+  scene.add(frontSign);
   // A compact stone-faced university arrival point on the *opposite side*
   // of the road: public campus imagery shows a low wall with the school name
   // and an adjoining security booth, not an elevated gate spanning the street.
@@ -228,9 +288,11 @@ function upperStop(scene,C,H){
   return z;
 }
 
-export function addHillCommute(scene,{center,heightAt}){
+export function addHillCommute(scene,{center,schoolFork,heightAt}){
+  schoolStraightStreet(scene,center,heightAt,schoolFork);
   primarySchool(scene,center,heightAt);
   storeBlock(scene,center,heightAt);
+  shopLane(scene,center,heightAt);
   upperStop(scene,center,heightAt);
   flush(scene);
 }

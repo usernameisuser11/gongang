@@ -8,27 +8,55 @@ const routeCode=readFileSync(new URL('../public/hill-route.js',import.meta.url),
 const checkpointMatch=routeCode.match(/export const HILL_CHECKPOINTS = Object\.freeze\((\[[\s\S]*?\])\);/);
 assert.ok(checkpointMatch,'commute checkpoint list missing');
 const checkpoints=new Function('return '+checkpointMatch[1])();
-assert.deepEqual(checkpoints.map(p=>p.id),['start','entrance','lower-slope','elementary','yungane','budaetong','university']);
+assert.deepEqual(checkpoints.map(p=>p.id),['start','entrance','lower-slope','elementary','school-turn','steep-shops','yungane','budaetong','university']);
 assert.equal(checkpoints[0].z,215,'default spawn must start at the true bottom of the extended hill');
 assert.ok(checkpoints.every((p,i)=>i===0 || checkpoints[i-1].z>p.z),'landmark order');
 const hillCode=readFileSync(new URL('../public/hill.js',import.meta.url),'utf8');
-const routeLogic=hillCode.slice(hillCode.indexOf('const center ='),hillCode.indexOf('const c ='));
+const routeLogic=hillCode.slice(hillCode.indexOf('const clampRoute ='),hillCode.indexOf('const c ='));
 assert.ok(routeLogic.includes('function canWalk'),'walkability logic missing');
-const {center,canWalk,straightFork}=new Function(routeLogic+';return {center,canWalk,straightFork};')();
+const {center,canWalk,straightFork,schoolFork,sidePoint,climb,closestRouteZ}=new Function(routeLogic+';return {center,canWalk,straightFork,schoolFork,sidePoint,climb,closestRouteZ};')();
 // Start on a calm lower straight, then clearly take the LEFT uphill branch.
 assert.ok(Math.abs(center(215)-center(177))<6,'lower road must begin nearly straight');
 assert.ok(center(160)-center(102)>24,'commute must turn left after the fork');
 assert.ok(Math.abs(center(160)-straightFork(160))<4,'left branch and through street meet');
 assert.ok(straightFork(104)-center(104)>20,'straight road must separate to the right');
+assert.ok(center(56)-center(30)>20,'a SECOND left turn must follow the primary school');
+assert.ok(Math.abs(center(28)-center(5))<6,'restaurant lane should straighten after school turn');
+assert.ok(schoolFork(30)-center(30)>20,'school exit needs a visibly separate straight road');
+assert.equal(canWalk(schoolFork(30),30),false,'guided travellers must take the LEFT uphill street');
+assert.ok(routeCode.includes('function schoolStraightStreet'),'the second school junction must be rendered');
+assert.ok(routeCode.includes("name:'7016"),'final 7016 stop must have a visible sign');
+const gentleGrade=(climb(150)-climb(175))/25;
+const restaurantGrade=(climb(10)-climb(34))/24;
+const arrivalGrade=(climb(-90)-climb(-70))/20;
+assert.ok(restaurantGrade>gentleGrade*1.7,'shop street must be substantially steeper than lower approach');
+assert.ok(restaurantGrade>arrivalGrade*1.55,'grade must ease before the 7016 bus stop');
+assert.ok(Math.abs(closestRouteZ(center(44),44)-44)<.15,'route projection must remain continuous');
+// The inside sidewalk must never fold back on itself at the school bend.
+// Exercise normal walking speed, rather than relying only on static checkpoints.
+let probe=sidePoint(81,-5.35);
+for(let i=0;i<320;i++){
+  const routeZ=closestRouteZ(probe.x,probe.z);
+  if(routeZ<45.5)break;
+  const target=sidePoint(Math.max(43,routeZ-2.2),-5.35);
+  const distance=Math.hypot(target.x-probe.x,target.z-probe.z);
+  const ratio=distance>.0001?Math.min(1,3.65*.055/distance):0;
+  const x=probe.x+(target.x-probe.x)*ratio,z=probe.z+(target.z-probe.z)*ratio;
+  assert.ok(canWalk(x,z),'guided walker hit blocked terrain on school turn');
+  probe={x,z};
+}
+assert.ok(closestRouteZ(probe.x,probe.z)<45.5,'school turn must remain passable at normal walk speed');
 const approachCode=readFileSync(new URL('../public/hill-approach.js',import.meta.url),'utf8');
 assert.ok(approachCode.includes('function straightContinuation'),'forked street missing');
 assert.ok(!approachCode.includes('parkedCar(scene,center,heightAt,194'),'start must remain free of cars');
-for(let z=checkpoints[0].z;z>=-67;z-=.5){
-  assert.ok(canWalk(center(z)-5.35,z),'left sidewalk blocked at z='+z);
-  assert.ok(canWalk(center(z)+5.35,z),'right sidewalk blocked at z='+z);
+for(let z=checkpoints[0].z;z>=-73;z-=.5){
+  for(const side of [-1,1]){
+    const p=sidePoint(z,side*5.35);
+    assert.ok(canWalk(p.x,p.z),'sidewalk blocked after bend at z='+z+' side='+side);
+  }
 }
 assert.ok(hillCode.includes('addLowerHillApproach'),'lower approach must be rendered');
-console.log('PASS: seven landmarks, left fork, unobstructed spawn, and a continuous uphill route');
+console.log('PASS: nine landmarks, second left turn, steep shop climb, 7016 arrival and both sidewalks');
 
 const base = 'http://127.0.0.1:8787';
 mkdirSync('artifacts', { recursive: true });
@@ -52,7 +80,7 @@ async function waitServer() {
   throw new Error('Timed out waiting for local Cloudflare Worker: ' + logs.slice(-4000));
 }
 const errors = [];
-async function preparePage(browser, options, stop = '') {
+async function preparePage(browser, options, stop = '', smokeWalk = false) {
   const context = await browser.newContext(options);
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(String(error)));
@@ -65,7 +93,7 @@ async function preparePage(browser, options, stop = '') {
     });
   });
   // WebGL setup may run synchronously before DOMContentLoaded on shared CI GPUs.
-  const url = base + '/?map=hill' + (stop ? '&stop=' + encodeURIComponent(stop) : '');
+  const url = base + '/?map=hill' + (stop ? '&stop=' + encodeURIComponent(stop) : '') + (smokeWalk ? '&smokeWalk=1' : '');
   await page.goto(url, { waitUntil: 'commit', timeout: 45000 });
   await page.locator('#viewport[data-ready="true"]').waitFor({ state: 'attached', timeout: 45000 });
   await page.locator('[data-world]').waitFor();
@@ -93,7 +121,7 @@ try {
   // fighting over a software-rendered GPU on GitHub-hosted CI runners.
   const previewDesktop=await preparePage(browser,{viewport:{width:1365,height:768}});
   await previewDesktop.page.screenshot({path:'artifacts/hill-desktop.png',timeout:30000});
-  assert.match(await previewDesktop.page.locator('[data-journey-label]').innerText(),/1\/7.*언덕 맨 아래/);
+  assert.match(await previewDesktop.page.locator('[data-journey-label]').innerText(),/1\/9.*언덕 맨 아래/);
   assert.equal(parseFloat(await previewDesktop.page.locator('[data-journey-fill]').evaluate(node=>node.style.width)),0);
   const walkButton = previewDesktop.page.locator('[data-journey-walk]');
   assert.equal(await walkButton.isVisible(), true, 'guided hill walking button visible');
@@ -113,11 +141,36 @@ try {
 
   // Capture the real route's landmark views separately. All stops share the
   // same continuous world; the stop URL is a preview/deep-link spawn only.
-  for(const id of ['entrance','lower-slope','elementary','yungane','budaetong','university']){
+  for(const id of ['entrance','lower-slope','elementary','school-turn','steep-shops','yungane','budaetong','university']){
     const item=await preparePage(browser,{viewport:{width:1200,height:740}},id);
     await item.page.screenshot({path:'artifacts/stop-'+id+'.png',timeout:30000});
     await item.context.close();
   }
+
+  // From the school, the guided walker must actually curve left and enter the
+  // steep shop lane without stopping or walking into the straight side street.
+  const schoolGuide=await preparePage(browser,{viewport:{width:1100,height:680}},'elementary',true);
+  const guideButton=schoolGuide.page.locator('[data-journey-walk]');
+  await guideButton.click();
+  await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='true',
+    'guided school walk activation',25000);
+  let diagnostics=0;
+  await waitUntil(async()=>{
+    const pct=parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width));
+    const active=await guideButton.getAttribute('aria-pressed');
+    if(++diagnostics%20===1)console.log('school turn progress',pct,'active',active);
+    if(active==='false' && pct<59)throw new Error('Guided walk stopped before left turn: progress '+pct+'%');
+    return pct>59;
+  },'guided second left turn after elementary school',60000);
+  await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='false',
+    'finish the school junction guided stage',35000);
+  await guideButton.click(); // Continue from the junction onto the shop climb.
+  await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='true',
+    'guided restaurant stage activation',25000);
+  await waitUntil(async()=>parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width))>65,
+    'guided arrival on the steeper restaurant road',60000);
+  await schoolGuide.page.screenshot({path:'artifacts/after-school-guided-turn.png',timeout:30000});
+  await schoolGuide.context.close();
 
   // Lightweight, simultaneous companion clients exercise WebSocket state changes
   // without conflating multiplayer latency with full-size software WebGL rendering.
