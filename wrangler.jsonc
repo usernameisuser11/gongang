@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "gonggang",
+  "name": "gongang",
   "main": "./cloudflare/worker.mjs",
   "compatibility_date": "2026-04-08",
   "d1_databases": [

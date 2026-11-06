@@ -18,8 +18,10 @@ export function heightAt(x, z) {
   const profile = smooth(-3.2, 1.8, d) * .78 + smooth(-10, 1.7, d) * .22;
   return -4 + (meadow + 4) * profile + rock * (1 - smooth(-1.2, 3, d));
 }
-export const canWalk = (x, z) => x > -45 && x < 47 && z > -47 && z < 52
-  && coastDistance(x, z) > 2.25 && Math.hypot(x-treePosition.x,z-treePosition.z) > .88;
+// Walkable space follows the rendered terrain rather than the grass placement area.
+// A coast buffer prevents walking over the steep cliff or off the mesh.
+export const canWalk = (x, z) => x > -59 && x < 70 && z > -65 && z < 59
+  && coastDistance(x, z) > 2.4 && Math.hypot(x-treePosition.x,z-treePosition.z) > .88;
 
 function landMaterial() {
   const m = new T.MeshStandardMaterial({ vertexColors: true, roughness: 1 });

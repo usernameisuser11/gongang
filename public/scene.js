@@ -1,5 +1,6 @@
 import * as T from 'three';
 import { makeLand, makeFarCoast } from './land.js';
+import { makeHill } from './hill.js';
 import { makeMeadow, makeTree } from './flora.js';
 import { makeSky, makeWater, sunDirection } from './atmosphere.js';
 import { createExperience } from './experience.js';
@@ -9,14 +10,16 @@ const viewport = document.getElementById('viewport');
 const loading = document.getElementById('loading');
 const compact = window.matchMedia('(pointer: coarse), (max-width: 720px)').matches;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const mapId = new URLSearchParams(location.search).get('map') === 'hill' ? 'hill' : 'cliff';
+const requestedStop = new URLSearchParams(location.search).get('stop');
 
 function start() {
   const renderer = new T.WebGLRenderer({antialias:!compact, alpha:false, powerPreference:'high-performance'});
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.toneMapping = T.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.02;
+  renderer.toneMappingExposure = mapId === 'hill' ? 1.12 : 1.02;
   viewport.append(renderer.domElement);
-  renderer.domElement.setAttribute('aria-label','걸어서 둘러보는 해안 초원');
+  renderer.domElement.setAttribute('aria-label',mapId === 'hill' ? '걸어서 오르는 상명의 언덕길' : '걸어서 둘러보는 해안 초원');
   renderer.domElement.addEventListener('webglcontextlost', event => {
     event.preventDefault();
     loading.textContent = '풍경을 다시 불러오는 중…';
@@ -25,7 +28,7 @@ function start() {
   renderer.domElement.addEventListener('webglcontextrestored', () => { loading.hidden = true; });
 
   const scene = new T.Scene();
-  scene.fog = new T.FogExp2('#9baab3',.0038);
+  scene.fog = new T.FogExp2(mapId === 'hill' ? '#a2afb0' : '#9baab3', mapId === 'hill' ? .0046 : .0038);
   const camera = new T.PerspectiveCamera(49,1,.13,1350);
   const time = {value:8.4};
   scene.add(new T.HemisphereLight('#c9e2ff','#94845e',1.76));
@@ -33,21 +36,36 @@ function start() {
   sunset.position.copy(sunDirection).multiplyScalar(70);
   sunset.position.y += 16;
   scene.add(sunset);
+  // Preserve the full painterly clouds in both worlds.
   makeSky(scene,time);
-  makeWater(scene,time);
-  const terrain = makeLand(scene);
-  makeFarCoast(scene);
-  makeMeadow(scene,time,compact);
-  makeTree(scene,time);
+  let terrain;
+  if (mapId === 'hill') {
+    terrain = makeHill(scene, time, compact);
+  } else {
+    makeWater(scene,time);
+    terrain = makeLand(scene);
+    makeFarCoast(scene);
+    makeMeadow(scene,time,compact);
+    makeTree(scene,time);
+  }
 
   const portrait = window.innerHeight > window.innerWidth;
   const experience = createExperience({
-    THREE:T,scene,camera,renderer,terrain,spawn:portrait?{x:-13.3,z:19.5}:{x:-10.2,z:17.8},initialYaw:portrait?.165:.145,
-    view:{distance:portrait?8.4:9.8,pitch:portrait?.135:.113,height:portrait?1.66:1.78,
-      aimHeight:portrait?1.68:1.83,scale:1.01,speed:3.65}
+    THREE:T,scene,camera,renderer,terrain,mapId,
+    spawn:mapId === 'hill' ? terrain.spawnFor(requestedStop) : (portrait?{x:-13.3,z:19.5}:{x:-10.2,z:17.8}),
+    initialYaw:mapId === 'hill' ? (requestedStop ? .20 : 0) : (portrait?.165:.145),
+    view:mapId === 'hill'
+      ? {distance:portrait?7.5:9.1,pitch:.13,height:1.65,aimHeight:1.53,scale:1.01,speed:3.65}
+      : {distance:portrait?8.4:9.8,pitch:portrait?.135:.113,height:portrait?1.66:1.78,
+          aimHeight:portrait?1.68:1.83,scale:1.01,speed:3.65}
   });
-  const waveFile = 'quiet-shore-waves.m4a';
-  installAmbientSound(document.getElementById('wave-sound'),globalThis.BARAMUI_ASSETS?.[waveFile] ?? './assets/'+waveFile);
+  const soundControl = document.getElementById('wave-sound');
+  if (mapId === 'cliff') {
+    const waveFile = 'quiet-shore-waves.m4a';
+    installAmbientSound(soundControl,globalThis.BARAMUI_ASSETS?.[waveFile] ?? './assets/'+waveFile);
+  } else {
+    soundControl.closest('.cliff-toggle').hidden = true;
+  }
 
   function resize() {
     const width=window.innerWidth, height=window.innerHeight;

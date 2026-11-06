@@ -82,11 +82,13 @@ function createTraveler(THREE, color) {
   coatEdge.castShadow = false;
 
   oval(torso, tunicMaterial, 0, 0.19, 0, 0.123, 0.214, 0.091);
-  const hood = oval(torso, cloakMaterial, 0, 0.478, 0.023, 0.128, 0.151, 0.13);
+  const hood = oval(torso, cloakMaterial, 0, 0.473, 0.028, 0.115, 0.139, 0.121);
   hood.rotation.x = 0.14;
   oval(torso, trimMaterial, 0, 0.468, -0.07, 0.095, 0.112, 0.049);
-  oval(torso, interiorMaterial, 0, 0.47, -0.084, 0.085, 0.103, 0.046);
-  oval(torso, faceMaterial, 0, 0.447, -0.119, 0.055, 0.066, 0.027);
+  oval(torso, interiorMaterial, 0, 0.47, -0.084, 0.092, 0.105, 0.046);
+  oval(torso, faceMaterial, 0, 0.447, -0.124, 0.070, 0.076, 0.031);
+  // A small natural hair fringe and a narrower hood make the traveler read as human.
+  oval(torso, tunicMaterial, 0, 0.514, -0.137, 0.074, 0.022, 0.021);
   const collar = mesh(torso, new THREE.TorusGeometry(0.105, 0.023, 6, 20), trimMaterial, 0, 0.335, 0.003);
   collar.rotation.x = Math.PI * 0.5;
   collar.scale.y = 0.84;
@@ -231,7 +233,9 @@ function buildInterface(root) {
     <header class="cliff-title">
       <h1>공강</h1>
       <p class="cliff-tagline">수업과 수업 사이, 상명인을 위한 작은 쉼터</p>
-      <p class="cliff-status" data-status role="status">해 질 녘 · 바다를 따라</p>
+      <p class="cliff-status" data-status role="status">잠시 쉬어가는 중</p>
+      <label class="cliff-world">풍경 <select data-world aria-label="풍경 선택"><option value="cliff">바람의 절벽</option><option value="hill">상명의 언덕길</option></select></label>
+      <div class="cliff-journey" data-journey hidden aria-live="off"><span data-journey-label>등굣길 시작</span><div class="cliff-journey-track"><i data-journey-fill></i></div><small data-journey-next>언덕 아래</small><button class="cliff-journey-walk" type="button" data-journey-walk aria-pressed="false">다음 장소까지 걷기</button></div>
     </header>
     <div class="cliff-hint" data-hint></div>
     <button class="cliff-icon cliff-settings" type="button" data-settings aria-label="동행 및 조작 설정" aria-expanded="false">${icon('settings')}</button>
@@ -265,7 +269,7 @@ function storePreference(key, value) {
   try { localStorage.setItem(`baramui.${key}`, String(value)); } catch { /* Storage can be disabled. */ }
 }
 
-function createPresence({ getState, onPlayers, onStatus, onReset }) {
+function createPresence({ getState, onPlayers, onStatus, onReset, mapId = 'cliff' }) {
   const available = /^https?:$/.test(location.protocol);
   let socket = null;
   let reconnect = null;
@@ -310,6 +314,7 @@ function createPresence({ getState, onPlayers, onStatus, onReset }) {
     full = false;
     onStatus('connecting');
     const url = new URL('/presence', location.href);
+    url.searchParams.set('map', mapId);
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const connection = new WebSocket(url);
     socket = connection;
@@ -386,12 +391,62 @@ function createPresence({ getState, onPlayers, onStatus, onReset }) {
   };
 }
 
-export function createExperience({ THREE, scene, camera, renderer, terrain, spawn, initialYaw = 0, root = document.body, view = {} }) {
+export function createExperience({ THREE, scene, camera, renderer, terrain, spawn, initialYaw = 0, root = document.body, view = {}, mapId = 'cliff' }) {
   const element = renderer.domElement;
   element.style.touchAction = 'none';
   const ui = buildInterface(root);
   const panel = ui.querySelector('[data-panel]');
   const settings = ui.querySelector('[data-settings]');
+  const journey = ui.querySelector('[data-journey]');
+  const journeyLabel = ui.querySelector('[data-journey-label]');
+  const journeyNext = ui.querySelector('[data-journey-next]');
+  const journeyFill = ui.querySelector('[data-journey-fill]');
+  const journeyWalkButton = ui.querySelector('[data-journey-walk]');
+  const stops = mapId === 'hill' ? terrain.checkpoints ?? [] : [];
+  journey.hidden = stops.length === 0;
+  let lastJourneyIndex = -1;
+  let guidedStop = null;
+  let guidedSide = -1;
+  function updateJourney(currentZ){
+    if(!stops.length)return;
+    let reached=0;
+    for(let i=1;i<stops.length;i++)if(currentZ<=stops[i].z+2.5)reached=i;
+    const next=stops[Math.min(reached+1,stops.length-1)];
+    if(reached!==lastJourneyIndex){
+      lastJourneyIndex=reached;
+      journeyLabel.textContent=`${reached+1}/${stops.length} · ${stops[reached].name}`;
+      journeyNext.textContent=reached===stops.length-1?'학교 정류장 도착!':`다음 · ${next.name}`;
+    }
+    const total=stops[0].z-stops[stops.length-1].z;
+    const percent=Math.min(100,Math.max(0,(stops[0].z-currentZ)/total*100));
+    journeyFill.style.width=`${percent.toFixed(1)}%`;
+    if(guidedStop !== null && currentZ <= stops[guidedStop].z + 2.5) guidedStop = null;
+    const finished = reached === stops.length - 1;
+    if(journeyWalkButton.disabled !== finished) journeyWalkButton.disabled = finished;
+    const label = finished ? '학교 정류장 도착' : guidedStop !== null
+      ? `${stops[guidedStop].name}까지 걷는 중 · 멈추기` : '다음 장소까지 걷기';
+    if(journeyWalkButton.textContent !== label) journeyWalkButton.textContent = label;
+    const pressed = String(guidedStop !== null);
+    if(journeyWalkButton.getAttribute('aria-pressed') !== pressed) journeyWalkButton.setAttribute('aria-pressed', pressed);
+  }
+  const worldSelect = ui.querySelector('[data-world]');
+  worldSelect.value = mapId;
+  worldSelect.addEventListener('change', () => {
+    const next = new URL(location.href);
+    next.searchParams.set('map', worldSelect.value);
+    location.assign(next.href);
+  });
+  journeyWalkButton.addEventListener('click', () => {
+    if(!stops.length || lastJourneyIndex >= stops.length - 1) return;
+    if(guidedStop !== null) guidedStop = null;
+    else {
+      guidedStop = Math.max(1, lastJourneyIndex + 1);
+      guidedSide = Math.abs(x - terrain.routeX(z, -1)) <= Math.abs(x - terrain.routeX(z, 1)) ? -1 : 1;
+      destination = null;
+      if(pose === 'sit' || pose === 'lie') setPose('idle');
+    }
+    fadeHint();
+  });
   const hint = ui.querySelector('[data-hint]');
   const stick = ui.querySelector('[data-stick]');
   const stickThumb = stick.querySelector('span');
@@ -457,6 +512,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   function doAction(action) {
     if (action === 'sit' || action === 'lie') {
       destination = null;
+      guidedStop = null;
       setPose(pose === action ? 'idle' : action);
     } else if (action === 'greet') {
       if (pose === 'lie') setPose('sit');
@@ -476,6 +532,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     settings.setAttribute('aria-expanded', String(open));
     if (open) {
       keys.clear();
+      guidedStop = null;
       joystick.id = null;
       joystick.x = joystick.y = 0;
       stickThumb.style.transform = '';
@@ -494,6 +551,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       event.preventDefault();
       keys.add(event.code);
       destination = null;
+      guidedStop = null;
       fadeHint();
     }
     if (!event.repeat && actionKeys[event.code]) doAction(actionKeys[event.code]);
@@ -547,6 +605,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     const point = pointOnTerrain(event);
     if (point && terrain.canWalk(point.x, point.z)) {
       destination = { x: point.x, z: point.z };
+      guidedStop = null;
       fadeHint();
     }
   });
@@ -574,6 +633,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     joystick.id = event.pointerId;
     stick.setPointerCapture(event.pointerId);
     destination = null;
+    guidedStop = null;
     fadeHint();
     moveStick(event);
   });
@@ -607,9 +667,10 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const onlineText = ui.querySelector('[data-online]');
   const statusText = ui.querySelector('[data-status]');
   function refreshStatus() {
+    const worldName = mapId === 'hill' ? '상명의 언덕길' : '해 질 녘';
     statusText.textContent = transportStatus === 'online' && remote.size
-      ? `해 질 녘 · ${remote.size}명과 함께`
-      : `해 질 녘 · ${statusCopy[transportStatus][0]}`;
+      ? `${worldName} · ${remote.size}명과 함께`
+      : `${worldName} · ${statusCopy[transportStatus][0]}`;
     onlineText.textContent = statusCopy[transportStatus][1];
   }
 
@@ -662,6 +723,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   }
 
   const presence = createPresence({
+    mapId,
     getState: () => ({ x, z, yaw: Math.atan2(Math.sin(bodyYaw), Math.cos(bodyYaw)), pose, gesture, signal }),
     onPlayers: updatePlayers,
     onStatus: (value) => { transportStatus = value; refreshStatus(); },
@@ -710,6 +772,22 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       dx *= speed / divisor;
       dz *= speed / divisor;
       destination = null;
+      guidedStop = null;
+    } else if (guidedStop !== null) {
+      // Follow a sidewalk rather than cutting straight through a curved road.
+      const targetZ = stops[guidedStop].z;
+      const lookaheadZ = Math.max(targetZ, z - 3.2);
+      dx = terrain.routeX(lookaheadZ, guidedSide) - x;
+      dz = lookaheadZ - z;
+      const length = Math.hypot(dx, dz);
+      if(length > 0.001) {
+        const ratio = Math.min(1, speed / length);
+        dx *= ratio;
+        dz *= ratio;
+      } else {
+        guidedStop = null;
+        dx = dz = 0;
+      }
     } else if (destination) {
       dx = destination.x - x;
       dz = destination.z - z;
@@ -731,6 +809,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
         setPose('walk');
       } else {
         destination = null;
+        guidedStop = null;
         if (pose === 'walk') setPose('idle');
       }
     } else if (pose === 'walk') {
@@ -738,6 +817,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     }
 
     const floor = terrain.heightAt(x, z);
+    updateJourney(z);
     local.group.position.set(x, floor, z);
     local.group.rotation.y = bodyYaw;
     local.animate(pose, time, dt);

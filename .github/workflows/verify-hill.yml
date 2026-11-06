@@ -1,0 +1,48 @@
+name: Verify Sangmyung hill preview
+on:
+  push:
+    branches:
+      - feature/sangmyung-hill-and-worlds
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install Korean fonts for accurate UI screenshots
+        run: sudo apt-get update -qq && sudo apt-get install -y fonts-noto-cjk
+      - name: Install project dependencies
+        run: npm ci
+      - name: Install browser test library
+        run: npm install --no-save --no-package-lock playwright@1.56.1
+      - name: Check modules syntax
+        run: |
+          node --check public/hill.js
+          node --check public/hill-detail.js
+          node --check public/hill-streetscape.js
+          node --check public/hill-route.js
+          node --check public/scene.js
+          node --check public/experience.js
+          node --check cloudflare/worker.mjs
+      - name: Verify Cloudflare Worker bundle without deployment
+        run: npm run cloudflare:check
+      - name: Apply local D1 migrations
+        run: npx wrangler d1 migrations apply VISITS --local
+      - name: Browser, presence and map smoke tests
+        run: node tests/hill-smoke.mjs
+      - name: Save browser previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sangmyung-hill-preview
+          path: artifacts/*.png
+          if-no-files-found: ignore
