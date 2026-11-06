@@ -441,7 +441,10 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     if(guidedStop !== null) guidedStop = null;
     else {
       guidedStop = Math.max(1, lastJourneyIndex + 1);
-      guidedSide = Math.abs(x - terrain.routeX(z, -1)) <= Math.abs(x - terrain.routeX(z, 1)) ? -1 : 1;
+      const routeZ = terrain.progressZ?.(x,z) ?? z;
+      const left = terrain.routePoint?.(routeZ,-1) ?? {x:terrain.routeX(routeZ,-1),z:routeZ};
+      const right = terrain.routePoint?.(routeZ,1) ?? {x:terrain.routeX(routeZ,1),z:routeZ};
+      guidedSide = Math.hypot(x-left.x,z-left.z) <= Math.hypot(x-right.x,z-right.z) ? -1 : 1;
       destination = null;
       if(pose === 'sit' || pose === 'lie') setPose('idle');
     }
