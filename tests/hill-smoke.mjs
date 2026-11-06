@@ -8,17 +8,19 @@ const routeCode=readFileSync(new URL('../public/hill-route.js',import.meta.url),
 const checkpointMatch=routeCode.match(/export const HILL_CHECKPOINTS = Object\.freeze\((\[[\s\S]*?\])\);/);
 assert.ok(checkpointMatch,'commute checkpoint list missing');
 const checkpoints=new Function('return '+checkpointMatch[1])();
-assert.deepEqual(checkpoints.map(p=>p.id),['start','elementary','yungane','budaetong','university']);
+assert.deepEqual(checkpoints.map(p=>p.id),['start','entrance','lower-slope','elementary','yungane','budaetong','university']);
+assert.equal(checkpoints[0].z,215,'default spawn must start at the true bottom of the extended hill');
 assert.ok(checkpoints.every((p,i)=>i===0 || checkpoints[i-1].z>p.z),'landmark order');
 const hillCode=readFileSync(new URL('../public/hill.js',import.meta.url),'utf8');
 const routeLogic=hillCode.slice(hillCode.indexOf('const center ='),hillCode.indexOf('const c ='));
 assert.ok(routeLogic.includes('function canWalk'),'walkability logic missing');
 const {center,canWalk}=new Function(routeLogic+';return {center,canWalk};')();
-for(let z=77;z>=-67;z-=.5){
+for(let z=checkpoints[0].z;z>=-67;z-=.5){
   assert.ok(canWalk(center(z)-5.35,z),'left sidewalk blocked at z='+z);
   assert.ok(canWalk(center(z)+5.35,z),'right sidewalk blocked at z='+z);
 }
-console.log('PASS: all five landmarks and a continuous pedestrian route');
+assert.ok(hillCode.includes('addLowerHillApproach'),'lower approach must be rendered');
+console.log('PASS: seven landmarks and the full continuous commute from the bottom');
 
 const base = 'http://127.0.0.1:8787';
 mkdirSync('artifacts', { recursive: true });
@@ -61,7 +63,7 @@ async function preparePage(browser, options, stop = '') {
   await page.locator('[data-world]').waitFor();
   assert.equal(await page.locator('[data-world]').inputValue(), 'hill');
   await page.locator('[data-journey]').waitFor({state:'visible'});
-  assert.match(await page.locator('[data-journey]').innerText(),/등굣길|언덕 아래|초등학교|윤가네|부대통령|정류장/);
+  assert.match(await page.locator('[data-journey]').innerText(),/등굣길|언덕 맨 아래|진입 삼거리|초등학교|윤가네|부대통령|정류장/);
   return { context, page, socketFrames };
 }
 async function waitUntil(condition, label, timeout=20000) {
@@ -83,6 +85,8 @@ try {
   // fighting over a software-rendered GPU on GitHub-hosted CI runners.
   const previewDesktop=await preparePage(browser,{viewport:{width:1365,height:768}});
   await previewDesktop.page.screenshot({path:'artifacts/hill-desktop.png',timeout:30000});
+  assert.match(await previewDesktop.page.locator('[data-journey-label]').innerText(),/1\/7.*언덕 맨 아래/);
+  assert.equal(parseFloat(await previewDesktop.page.locator('[data-journey-fill]').evaluate(node=>node.style.width)),0);
   const walkButton = previewDesktop.page.locator('[data-journey-walk]');
   assert.equal(await walkButton.isVisible(), true, 'guided hill walking button visible');
   await walkButton.click();
@@ -101,7 +105,7 @@ try {
 
   // Capture the real route's landmark views separately. All stops share the
   // same continuous world; the stop URL is a preview/deep-link spawn only.
-  for(const id of ['elementary','yungane','budaetong','university']){
+  for(const id of ['entrance','lower-slope','elementary','yungane','budaetong','university']){
     const item=await preparePage(browser,{viewport:{width:1200,height:740}},id);
     await item.page.screenshot({path:'artifacts/stop-'+id+'.png',timeout:30000});
     await item.context.close();

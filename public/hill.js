@@ -3,28 +3,37 @@ import { fbm, noise, rng, smooth } from './nature.js';
 import { addHillDetails } from './hill-detail.js';
 import { HILL_CHECKPOINTS, addHillCommute } from './hill-route.js';
 import { addHillStreetscape, streetSurfaceMaterials } from './hill-streetscape.js';
+import { addLowerHillApproach } from './hill-approach.js';
 
 // A painterly reinterpretation of the memorable Sangmyung uphill walk, not a survey map.
-const edgeA = -112, edgeB = 108;
+const edgeA = -112, edgeB = 245;
 const center = z => 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7);
-const climb = z => 7.2 + (49-z)*.252 + .36*Math.sin((z+9)*.053);
+// Keep the original upper incline intact; start the extended lower section with a
+// gentler approach, without a seam in the terrain at the old bottom (z=86).
+const climb = z => 7.2 + (49-Math.min(z,86))*.252 - Math.max(0,z-86)*.14
+  + .36*Math.sin((z+9)*.053);
 
 function groundHeight(x,z) {
   const dx=Math.abs(x-center(z));
   const shoulder=Math.max(0,dx-7.2);
   const slope=shoulder*.17 + shoulder*shoulder*.009;
-  return climb(z)+slope+(fbm(x*.13+11,z*.12)-.5)*.72*smooth(7,14,dx);
+  // The street-view entrance is a developed road fork, not the sheer green
+  // embankment that bounded the older upper-only world. Keep wooded hills in
+  // the distance while opening the lower roadside to shops and bridge views.
+  const urban=Math.max(0,Math.min(1,(z-94)/80));
+  const lowerShoulder=1-urban*(x<center(z)?.88:.62);
+  return climb(z)+slope*lowerShoulder+(fbm(x*.13+11,z*.12)-.5)*.72*smooth(7,14,dx);
 }
 function canWalk(x,z) {
   // Keep the parked 7016 bus solid while the pedestrian path remains open.
   const busZ=-38, busX=center(busZ)+1.85;
-  return z > -98 && z < 83 && Math.abs(x-center(z)) < 8.12
+  return z > -98 && z < 233 && Math.abs(x-center(z)) < 8.12
     && !(Math.abs(x-busX)<1.30 && Math.abs(z-busZ)<3.52);
 }
 const c = v => new T.Color(v);
 
 function land(scene) {
-  const nx=151,nz=182, positions=[],colors=[],indices=[];
+  const nx=151,nz=294, positions=[],colors=[],indices=[];
   const meadow=c('#536b49'), leaf=c('#84975e'), moss=c('#355c51'), stone=c('#80776c');
   const color=new T.Color();
   for(let j=0;j<nz;j++) {
@@ -78,12 +87,12 @@ function makeRoad(scene) {
   const pavement=surface.sidewalk;
   const line=new T.MeshBasicMaterial({color:'#d8c49a',side:T.DoubleSide});
   const border=new T.MeshStandardMaterial({color:'#b6ac9b',roughness:.95,side:T.DoubleSide});
-  ribbon(scene,-3.95,3.95,-105,86,road,.095);
-  ribbon(scene,-6.7,-4.2,-105,86,pavement,.16);
-  ribbon(scene,4.2,6.7,-105,86,pavement,.16);
-  ribbon(scene,-4.20,-4.07,-105,86,border,.22);
-  ribbon(scene,4.07,4.20,-105,86,border,.22);
-  ribbon(scene,-.075,.075,-105,86,line,.111);
+  ribbon(scene,-3.95,3.95,-105,230,road,.095);
+  ribbon(scene,-6.7,-4.2,-105,230,pavement,.16);
+  ribbon(scene,4.2,6.7,-105,230,pavement,.16);
+  ribbon(scene,-4.20,-4.07,-105,230,border,.22);
+  ribbon(scene,4.07,4.20,-105,230,border,.22);
+  ribbon(scene,-.075,.075,-105,230,line,.111);
   // Soft roadside stones and garden strips break up the straight road edges.
   const random=rng(718);
   const stones=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),new T.MeshStandardMaterial({color:'#858579',roughness:1}),160);
@@ -227,6 +236,8 @@ export function makeHill(scene,time,compact=false) {
   plants(scene,compact);
   addHillDetails(scene,{center,heightAt:groundHeight});
   addHillStreetscape(scene,{center,heightAt:groundHeight,compact});
+  // The entrance and low-rise street are drawn before the upper landmarks.
+  addLowerHillApproach(scene,{center,heightAt:groundHeight,compact});
   addHillCommute(scene,{center,heightAt:groundHeight});
   // Keep travelers' feet aligned to the raised asphalt and pavement meshes.
   const walkingHeight=(x,z)=>{
@@ -234,7 +245,7 @@ export function makeHill(scene,time,compact=false) {
     return groundHeight(x,z)+(offset<=3.95?.095:offset>=4.2&&offset<=6.7?.16:.02);
   };
   const terrain={
-    spawn:{x:center(77)-5.35,z:77},
+    spawn:{x:center(215)-5.35,z:215},
     spawnFor(id){
       const point=HILL_CHECKPOINTS.find(p=>p.id===id);
       return point ? {x:center(point.z)-5.35,z:point.z} : this.spawn;
