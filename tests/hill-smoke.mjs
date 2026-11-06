@@ -14,7 +14,7 @@ assert.ok(checkpoints.every((p,i)=>i===0 || checkpoints[i-1].z>p.z),'landmark or
 const hillCode=readFileSync(new URL('../public/hill.js',import.meta.url),'utf8');
 const routeLogic=hillCode.slice(hillCode.indexOf('const clampRoute ='),hillCode.indexOf('const c ='));
 assert.ok(routeLogic.includes('function canWalk'),'walkability logic missing');
-const {center,canWalk,straightFork,sidePoint,climb,closestRouteZ}=new Function(routeLogic+';return {center,canWalk,straightFork,sidePoint,climb,closestRouteZ};')();
+const {center,canWalk,straightFork,schoolFork,sidePoint,climb,closestRouteZ}=new Function(routeLogic+';return {center,canWalk,straightFork,sidePoint,climb,closestRouteZ};')();
 // Start on a calm lower straight, then clearly take the LEFT uphill branch.
 assert.ok(Math.abs(center(215)-center(177))<6,'lower road must begin nearly straight');
 assert.ok(center(160)-center(102)>24,'commute must turn left after the fork');
@@ -22,6 +22,10 @@ assert.ok(Math.abs(center(160)-straightFork(160))<4,'left branch and through str
 assert.ok(straightFork(104)-center(104)>20,'straight road must separate to the right');
 assert.ok(center(56)-center(30)>20,'a SECOND left turn must follow the primary school');
 assert.ok(Math.abs(center(28)-center(5))<6,'restaurant lane should straighten after school turn');
+assert.ok(schoolFork(30)-center(30)>20,'school exit needs a visibly separate straight road');
+assert.equal(canWalk(schoolFork(30),30),false,'guided travellers must take the LEFT uphill street');
+assert.ok(routeCode.includes('function schoolStraightStreet'),'the second school junction must be rendered');
+assert.ok(routeCode.includes("name:'7016"),'final 7016 stop must have a visible sign');
 const gentleGrade=(climb(150)-climb(175))/25;
 const restaurantGrade=(climb(10)-climb(34))/24;
 const arrivalGrade=(climb(-90)-climb(-70))/20;
@@ -128,6 +132,16 @@ try {
     await item.page.screenshot({path:'artifacts/stop-'+id+'.png',timeout:30000});
     await item.context.close();
   }
+
+  // From the school, the guided walker must actually curve left and enter the
+  // steep shop lane without stopping or walking into the straight side street.
+  const schoolGuide=await preparePage(browser,{viewport:{width:1100,height:680}},'elementary');
+  const guideButton=schoolGuide.page.locator('[data-journey-walk]');
+  await guideButton.click();
+  await waitUntil(async()=>parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width))>62,
+    'guided second left turn after elementary school',60000);
+  await schoolGuide.page.screenshot({path:'artifacts/after-school-guided-turn.png',timeout:30000});
+  await schoolGuide.context.close();
 
   // Lightweight, simultaneous companion clients exercise WebSocket state changes
   // without conflating multiplayer latency with full-size software WebGL rendering.
