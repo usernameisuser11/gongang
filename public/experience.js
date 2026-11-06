@@ -429,6 +429,10 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     const pressed = String(guidedStop !== null);
     if(journeyWalkButton.getAttribute('aria-pressed') !== pressed) journeyWalkButton.setAttribute('aria-pressed', pressed);
   }
+  // Initialize the correct deep-link checkpoint immediately. In slow WebGL
+  // environments the click handler can run before the first animation tick.
+  // Without this, 'walk to next' would target the old first checkpoint.
+  updateJourney(terrain.progressZ?.(spawn.x,spawn.z) ?? spawn.z);
   const worldSelect = ui.querySelector('[data-world]');
   worldSelect.value = mapId;
   worldSelect.addEventListener('change', () => {
