@@ -14,13 +14,21 @@ assert.ok(checkpoints.every((p,i)=>i===0 || checkpoints[i-1].z>p.z),'landmark or
 const hillCode=readFileSync(new URL('../public/hill.js',import.meta.url),'utf8');
 const routeLogic=hillCode.slice(hillCode.indexOf('const center ='),hillCode.indexOf('const c ='));
 assert.ok(routeLogic.includes('function canWalk'),'walkability logic missing');
-const {center,canWalk}=new Function(routeLogic+';return {center,canWalk};')();
+const {center,canWalk,straightFork}=new Function(routeLogic+';return {center,canWalk,straightFork};')();
+// Start on a calm lower straight, then clearly take the LEFT uphill branch.
+assert.ok(Math.abs(center(215)-center(177))<6,'lower road must begin nearly straight');
+assert.ok(center(160)-center(102)>24,'commute must turn left after the fork');
+assert.ok(Math.abs(center(160)-straightFork(160))<4,'left branch and through street meet');
+assert.ok(straightFork(104)-center(104)>20,'straight road must separate to the right');
+const approachCode=readFileSync(new URL('../public/hill-approach.js',import.meta.url),'utf8');
+assert.ok(approachCode.includes('function straightContinuation'),'forked street missing');
+assert.ok(!approachCode.includes('parkedCar(scene,center,heightAt,194'),'start must remain free of cars');
 for(let z=checkpoints[0].z;z>=-67;z-=.5){
   assert.ok(canWalk(center(z)-5.35,z),'left sidewalk blocked at z='+z);
   assert.ok(canWalk(center(z)+5.35,z),'right sidewalk blocked at z='+z);
 }
 assert.ok(hillCode.includes('addLowerHillApproach'),'lower approach must be rendered');
-console.log('PASS: seven landmarks and the full continuous commute from the bottom');
+console.log('PASS: seven landmarks, left fork, unobstructed spawn, and a continuous uphill route');
 
 const base = 'http://127.0.0.1:8787';
 mkdirSync('artifacts', { recursive: true });

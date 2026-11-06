@@ -806,6 +806,10 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       if (move(dx, dz)) {
         const heading = Math.atan2(oldX - x, oldZ - z);
         bodyYaw += Math.atan2(Math.sin(heading - bodyYaw), Math.cos(heading - bodyYaw)) * (1 - Math.exp(-dt * 11));
+        // In assisted walking, rotate the view with the actual left-hand turn.
+        // Manual camera dragging and WASD remain independent.
+        if(guidedStop !== null)
+          yaw += Math.atan2(Math.sin(heading-yaw),Math.cos(heading-yaw))*(1-Math.exp(-dt*2.8));
         setPose('walk');
       } else {
         destination = null;

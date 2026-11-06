@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/sangmyung-hill-and-worlds
+      - feature/sangmyung-left-turn
   workflow_dispatch:
 
 permissions:

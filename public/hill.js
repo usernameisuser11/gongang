@@ -7,15 +7,29 @@ import { addLowerHillApproach } from './hill-approach.js';
 
 // A painterly reinterpretation of the memorable Sangmyung uphill walk, not a survey map.
 const edgeA = -112, edgeB = 245;
-const center = z => 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7);
+// Street-video path: below the junction the road is nearly straight, then the
+// Sangmyung uphill route branches LEFT towards the school. Going uphill is -Z.
+// Keep the entire old upper road untouched past z=86.
+const center = z => {
+  const t=Math.max(0,Math.min(1,(z-86)/83));
+  const turn=t*t*(3-2*t);
+  return 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7)+41*turn;
+};
+// A separate non-traversable straight continuation makes the fork readable.
+const straightFork = z => center(169)+(169-z)*.035;
 // Keep the original upper incline intact; start the extended lower section with a
 // gentler approach, without a seam in the terrain at the old bottom (z=86).
 const climb = z => 7.2 + (49-Math.min(z,86))*.252 - Math.max(0,z-86)*.14
   + .36*Math.sin((z+9)*.053);
 
 function groundHeight(x,z) {
-  const dx=Math.abs(x-center(z));
-  const shoulder=Math.max(0,dx-7.2);
+  const onRoute=Math.abs(x-center(z));
+  // The right-hand through street has its own terrain corridor; otherwise
+  // its surface rises into a hillside after the left turn.
+  const forkWeight=smooth(91,119,z)*(1-smooth(153,169,z));
+  const straightDistance=Math.abs(x-straightFork(z))+12*(1-forkWeight);
+  const dx=Math.min(onRoute,straightDistance);
+  const shoulder=Math.min(48,Math.max(0,dx-7.2));
   const slope=shoulder*.17 + shoulder*shoulder*.009;
   // The street-view entrance is a developed road fork, not the sheer green
   // embankment that bounded the older upper-only world. Keep wooded hills in
@@ -33,13 +47,13 @@ function canWalk(x,z) {
 const c = v => new T.Color(v);
 
 function land(scene) {
-  const nx=151,nz=294, positions=[],colors=[],indices=[];
+  const nx=181,nz=294, positions=[],colors=[],indices=[];
   const meadow=c('#536b49'), leaf=c('#84975e'), moss=c('#355c51'), stone=c('#80776c');
   const color=new T.Color();
   for(let j=0;j<nz;j++) {
     const z=edgeA+(edgeB-edgeA)*j/(nz-1);
     for(let i=0;i<nx;i++) {
-      const x=-50+100*i/(nx-1),y=groundHeight(x,z);
+      const x=-75+160*i/(nx-1),y=groundHeight(x,z);
       const d=Math.abs(x-center(z)),grain=fbm(x*.085+12,z*.092+5);
       color.copy(meadow).lerp(leaf,.15+.6*grain).lerp(moss,.30*fbm(x*.035,z*.07));
       color.lerp(stone,Math.max(0,smooth(16,37,d))*.22);
@@ -60,7 +74,7 @@ function land(scene) {
 
 function ribbon(scene,left,right,z0,z1,mat,lift=.065) {
   const positions=[],uv=[],idx=[];
-  const steps=180;
+  const steps=324;
   for(let j=0;j<=steps;j++) {
     const z=z0+(z1-z0)*j/steps, mid=center(z);
     for(const off of [left,right]){
@@ -237,7 +251,7 @@ export function makeHill(scene,time,compact=false) {
   addHillDetails(scene,{center,heightAt:groundHeight});
   addHillStreetscape(scene,{center,heightAt:groundHeight,compact});
   // The entrance and low-rise street are drawn before the upper landmarks.
-  addLowerHillApproach(scene,{center,heightAt:groundHeight,compact});
+  addLowerHillApproach(scene,{center,straightFork,heightAt:groundHeight,compact});
   addHillCommute(scene,{center,heightAt:groundHeight});
   // Keep travelers' feet aligned to the raised asphalt and pavement meshes.
   const walkingHeight=(x,z)=>{
