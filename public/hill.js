@@ -17,7 +17,12 @@ function groundHeight(x,z) {
   const dx=Math.abs(x-center(z));
   const shoulder=Math.max(0,dx-7.2);
   const slope=shoulder*.17 + shoulder*shoulder*.009;
-  return climb(z)+slope+(fbm(x*.13+11,z*.12)-.5)*.72*smooth(7,14,dx);
+  // The street-view entrance is a developed road fork, not the sheer green
+  // embankment that bounded the older upper-only world. Keep wooded hills in
+  // the distance while opening the lower roadside to shops and bridge views.
+  const urban=Math.max(0,Math.min(1,(z-94)/80));
+  const lowerShoulder=1-urban*(x<center(z)?.88:.62);
+  return climb(z)+slope*lowerShoulder+(fbm(x*.13+11,z*.12)-.5)*.72*smooth(7,14,dx);
 }
 function canWalk(x,z) {
   // Keep the parked 7016 bus solid while the pedestrian path remains open.
