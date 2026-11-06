@@ -300,6 +300,7 @@ export function makeHill(scene,time,compact=false) {
     routePoint(s,side = -1){ return sidePoint(s,side < 0 ? -5.35 : 5.35); },
     routeX(s,side = -1){ return sidePoint(s,side < 0 ? -5.35 : 5.35).x; },
     progressZ(x,z){ return closestRouteZ(x,z); },
+    forwardYawAt(s){ return Math.atan(centerSlope(s)); },
     pick(raycaster){return raycaster.intersectObject(surface,false)[0]?.point??null}
   };
   return terrain;
