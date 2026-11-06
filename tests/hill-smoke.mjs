@@ -14,7 +14,7 @@ assert.ok(checkpoints.every((p,i)=>i===0 || checkpoints[i-1].z>p.z),'landmark or
 const hillCode=readFileSync(new URL('../public/hill.js',import.meta.url),'utf8');
 const routeLogic=hillCode.slice(hillCode.indexOf('const clampRoute ='),hillCode.indexOf('const c ='));
 assert.ok(routeLogic.includes('function canWalk'),'walkability logic missing');
-const {center,canWalk,straightFork,schoolFork,sidePoint,climb,closestRouteZ}=new Function(routeLogic+';return {center,canWalk,straightFork,sidePoint,climb,closestRouteZ};')();
+const {center,canWalk,straightFork,schoolFork,sidePoint,climb,closestRouteZ}=new Function(routeLogic+';return {center,canWalk,straightFork,schoolFork,sidePoint,climb,closestRouteZ};')();
 // Start on a calm lower straight, then clearly take the LEFT uphill branch.
 assert.ok(Math.abs(center(215)-center(177))<6,'lower road must begin nearly straight');
 assert.ok(center(160)-center(102)>24,'commute must turn left after the fork');
