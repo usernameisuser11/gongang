@@ -138,8 +138,14 @@ try {
   const schoolGuide=await preparePage(browser,{viewport:{width:1100,height:680}},'elementary',true);
   const guideButton=schoolGuide.page.locator('[data-journey-walk]');
   await guideButton.click();
-  await waitUntil(async()=>parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width))>59,
-    'guided second left turn after elementary school',60000);
+  let diagnostics=0;
+  await waitUntil(async()=>{
+    const pct=parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width));
+    const active=await guideButton.getAttribute('aria-pressed');
+    if(++diagnostics%20===1)console.log('school turn progress',pct,'active',active);
+    if(active==='false' && pct<59)throw new Error('Guided walk stopped before left turn: progress '+pct+'%');
+    return pct>59;
+  },'guided second left turn after elementary school',60000);
   await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='false',
     'finish the school junction guided stage',35000);
   await guideButton.click(); // Continue from the junction onto the shop climb.
