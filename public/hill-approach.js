@@ -139,8 +139,10 @@ function straightContinuation(scene,C,H){
   raisedStrip(scene,C,H,102,162,t=>-3.32*taper(t),t=>3.32*taper(t),mats.road,.079);
   // Pavements stop before the asphalt reaches the primary fork. They never
   // form the giant gray slabs previously seen over the centerline.
-  raisedStrip(scene,C,H,104,149,t=>-5.48*taper(t),t=>-3.89*taper(t),mats.concrete,.128);
-  raisedStrip(scene,C,H,104,149,t=>3.89*taper(t),t=>5.48*taper(t),mats.concrete,.128);
+  // Each sidewalk narrows along its own curb, not into the middle of the
+  // other road (which would create another visible X-shaped wedge).
+  raisedStrip(scene,C,H,104,149,t=>-4.685-.795*taper(t),t=>-4.685+.795*taper(t),mats.concrete,.128);
+  raisedStrip(scene,C,H,104,149,t=>4.685-.795*taper(t),t=>4.685+.795*taper(t),mats.concrete,.128);
   // Only the fully separated portion has an additional road marking.
   raisedStrip(scene,C,H,105,131,()=>-.045,()=>.045,mats.white,.115);
   const signZ=137,signX=C(signZ)+7.3,signY=H(signX,signZ);
