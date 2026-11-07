@@ -109,13 +109,15 @@ function lowerStreet(scene,C,H){
   raisedStrip(scene,C,H,181,186,()=>-3.72,()=>3.72,mats.red,.121);
   slopeMark(scene,C,H,173,1.45);
   slopeMark(scene,C,H,201,1.15);
-  for(const z of [203,192,178]){
+  slopeMark(scene,C,H,245,1.3);
+  slopeMark(scene,C,H,272,1.25);
+  for(const z of [278,261,245,221,203,192,178]){
     const x=C(z)+3.95,y=H(x,z);
     cube(mats.white,x,y+.16,z,.12,.08,1.0);
   }
   // Bridge handrail follows the actual slope, not floating horizontal boxes.
   const posts=[];
-  for(let z=174;z<=222;z+=3.0){
+  for(let z=174;z<=306;z+=3.0){
     const x=C(z)-8.05,y=H(x,z);
     posts.push({x,y,z});
     cube(mats.rail,x,y+.70,z,.09,1.40,.09);
@@ -152,7 +154,7 @@ function straightContinuation(scene,C,H){
 function rightRetainingWall(scene,C,H){
   // The tall pale right-hand wall in the second street-view photograph, with
   // repeated joints and a narrow safety rail above the pedestrian sidewalk.
-  const n=65,z0=155,z1=207;
+  const n=132,z0=155,z1=295;
   const vertices=[],indices=[],tops=[];
   for(let i=0;i<=n;i++){
     const z=z0+(z1-z0)*i/n,x=C(z)+9.26,y=H(x,z)-.2;
@@ -176,10 +178,11 @@ function rightRetainingWall(scene,C,H){
   }
   // Slope-side trees peeking over the retaining wall.
   const random=rng(4908);
-  const leaves=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),mats.foliage,16);
+  const leavesCount=29;
+  const leaves=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),mats.foliage,leavesCount);
   const t=new T.Object3D();
-  for(let i=0;i<16;i++){
-    const z=158+i*2.88+random()*1.7,x=C(z)+13.8+random()*3.6,y=H(x,z);
+  for(let i=0;i<leavesCount;i++){
+    const z=158+i*4.58+random()*1.7,x=C(z)+13.8+random()*3.6,y=H(x,z);
     t.position.set(x,y+3.9,z);
     t.scale.set(1.65+random()*.9,2.6+random()*.9,2.1+random()*.7);
     t.rotation.set(.1,random()*3.0,.05);
@@ -194,10 +197,13 @@ function lowShops(scene,C,H){
     new T.MeshStandardMaterial({color:'#c8bcb2',roughness:.93}),
     new T.MeshStandardMaterial({color:'#a7b8b6',roughness:.93})
   ];
+  // Newly exposed lower approach now has real streetscape rather than an
+  // empty runway. Keep the junction itself free and school visible at left.
   for(const [k,z,side,offset,width,depth,ht] of [
+    [1,269,-1,20.6,11.2,14.6,9.2],
+    [0,239, 1,22.0,10.2,13.6,10.7],
     [0,204,-1,18.7,11.0,14,9.8],
-    // The former placeholder at z=176 hid the school on the fork's left.
-    [2,137,1,29.0,17.0,14,11.8]
+    [2,137, 1,29.0,17.0,14,11.8]
   ]){
     const x=C(z)+side*offset,ground=H(x,z);
     cube(mats.concrete,x,ground-.46,z,width+.2,1.2,depth+.25);
@@ -218,13 +224,13 @@ function lowShops(scene,C,H){
   }
 }
 function roadFurniture(scene,C,H){
-  for(const z of [201,164,125,96]){
+  for(const z of [282,253,218,201,164,125,96]){
     const x=C(z)+9.1,y=H(x,z),h=7.4;
     cube(mats.rail,x,y+h*.5,z,.16,h,.16);
     cube(mats.rail,x-1.25,y+h-.47,z,2.65,.11,.11);
     cube(mats.white,x-2.36,y+h-.55,z,.40,.15,.22);
   }
-  const poleZ=[201,164,125,96];
+  const poleZ=[282,253,218,201,164,125,96];
   for(let k=0;k<poleZ.length-1;k++){
     for(const dy of [.25,.68,1.06]){
       const za=poleZ[k],zb=poleZ[k+1];
