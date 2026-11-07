@@ -38,12 +38,16 @@ const closestRouteZ = (x,z) => {
 };
 const straightFork = z => center(169)+(169-z)*.035;
 const schoolFork = z => center(141)+(141-z)*.025;
-// Continuous grade profile: lower junction gentle, steep as soon as the
-// school exit is behind us, easing again before the 7016 bus stop.
+// Climb noticeably from the VERY BOTTOM through the elementary-school
+// frontage (z=215 -> z=158): ~22% projected grade rather than ~14%.
+// After the school (z≈141) the left-turn restaurant hill becomes steeper,
+// then the slope eases smoothly before the 7016 bus stop. Grade and height
+// are continuous, so characters, sidewalks, school fences and buildings
+// all follow the same ground surface without a sudden height step.
 const gradeRamp = (distance,width) => distance<=0?0:distance<width
   ? distance*distance/(2*width) : distance-width/2;
-const climb = z => 7.2+.14*(215-z)
-  + .26*gradeRamp(141-z,11)
+const climb = z => 7.2+.22*(215-z)
+  + .18*gradeRamp(141-z,11)
   - .22*gradeRamp(16-z,22)
   - .06*gradeRamp(-25-z,14)
   + .12*Math.sin((z+9)*.053);
