@@ -163,14 +163,14 @@ try {
     const active=await guideButton.getAttribute('aria-pressed');
     if(++diagnostics%20===1)console.log('school turn progress',pct,'active',active);
     if(active==='false' && pct<25)throw new Error('Guided walk stopped before left turn: progress '+pct+'%');
-    return pct>26;
-  },'guided second left turn after elementary school',60000);
+    return pct>25;
+  },'guided left turn immediately after elementary school',60000);
   await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='false',
     'finish the school junction guided stage',35000);
   await guideButton.click(); // Continue from the junction onto the shop climb.
   await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='true',
     'guided restaurant stage activation',25000);
-  await waitUntil(async()=>parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width))>29.7,
+  await waitUntil(async()=>parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width))>29.2,
     'guided arrival on the steeper restaurant road',60000);
   await schoolGuide.page.screenshot({path:'artifacts/after-school-guided-turn.png',timeout:30000});
   await schoolGuide.context.close();
