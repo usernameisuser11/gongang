@@ -5,10 +5,10 @@ import * as T from 'three';
 // (no. 7), and university (no. 20) follow their verified address order.
 export const HILL_CHECKPOINTS = Object.freeze([
   { id: 'start', name: '언덕 맨 아래', z: 215, caption: '홍지문2길 입구에서 출발' },
-  { id: 'entrance', name: '언덕 진입 삼거리', z: 177, caption: '왼쪽 난간과 어린이 보호구역 안내' },
-  { id: 'lower-slope', name: '언덕 초입', z: 111, caption: '오른쪽 옹벽을 따라 올라가는 길' },
-  { id: 'elementary', name: '상명사대부속초등학교', z: 81, caption: '초등학교 건물과 교문 · 홍지문2길 1' },
-  { id: 'school-turn', name: '초등학교 앞 좌회전', z: 43, caption: '왼쪽 오르막으로 진입' },
+  { id: 'entrance', name: '언덕 진입 삼거리', z: 177, caption: '왼쪽에 상명사대부속초등학교가 보이는 삼거리' },
+  { id: 'elementary', name: '상명사대부속초등학교', z: 158, caption: '삼거리 왼편의 초등학교 건물과 교문 · 홍지문2길 1' },
+  { id: 'lower-slope', name: '언덕 초입', z: 111, caption: '초등학교를 지나 오른쪽 옹벽을 따라 올라가는 길' },
+  { id: 'school-turn', name: '음식점 골목 좌회전', z: 43, caption: '왼쪽으로 꺾어 가파른 음식점 골목으로 진입' },
   { id: 'steep-shops', name: '가파른 음식점 거리', z: 26, caption: '경사가 높아지는 골목' },
   { id: 'yungane', name: '윤가네', z: 16, caption: '홍지문2길 7' },
   { id: 'budaetong', name: '부대통령', z: 8, caption: '윤가네와 같은 건물 · B1' },
@@ -20,6 +20,7 @@ const mat = {
   schoolDark: new T.MeshStandardMaterial({ color: '#8c8b80', roughness: .98 }),
   schoolGlass: new T.MeshStandardMaterial({ color: '#647c83', roughness: .38, metalness: .09 }),
   schoolRoof: new T.MeshStandardMaterial({ color: '#7b7770', roughness: .94 }),
+  schoolBlue: new T.MeshStandardMaterial({ color: '#355f78', roughness: .84 }),
   schoolTrim: new T.MeshStandardMaterial({ color: '#ece3cf', roughness: .98 }),
   masonry: new T.MeshStandardMaterial({ color: '#a88c77', roughness: .97 }),
   ocher: new T.MeshStandardMaterial({ color: '#927761', roughness: .95 }),
@@ -91,28 +92,58 @@ function posts(scene,xAt,yAt,zStart,zEnd,material,count=17,height=2.12){
   }
 }
 function primarySchool(scene,C,H){
-  // Video: the primary school is passed BEFORE the second left-hand climb.
-  // The school yard is on the outside of the upcoming bend; its fence and
-  // entrance do not occlude the rising road or cut across a pedestrian path.
-  const z=72,x=C(z)+21.6,ground=H(x,z),height=10.8;
-  box(scene,mat.school,x,ground+height*.5,z,18.0,height,27.0);
-  box(scene,mat.schoolRoof,x,ground+height+.10,z,18.65,.28,27.4);
-  box(scene,mat.schoolDark,x,ground+.15,z,18.4,.32,27.3);
-  box(scene,mat.schoolTrim,x-9.18,ground+height*.50,z,.27,height,27.4);
-  // Windows look toward the uphill street; the fence follows the grade.
-  for(let floor=0;floor<3;floor++)for(let col=0;col<8;col++){
-    const zz=z+(col-3.5)*3.04,yy=ground+2.14+floor*2.76;
-    box(scene,mat.schoolTrim,x-9.35,yy,zz,.17,1.88,2.0);
-    box(scene,mat.schoolGlass,x-9.48,yy,zz,.20,1.66,1.80);
-    box(scene,mat.schoolDark,x-9.58,yy,zz,.20,.07,1.83);
+  // From the downhill fork (z≈177), the school must be immediately to the
+  // LEFT of the rising route. Its old location near z≈72 was much too far up
+  // the hill and on the opposite side of the street.
+  const z=153,x=C(z)-27.1,width=19.0,depth=27.5,height=19.4;
+  // The hillside rises beneath the building: use an anchored stepped plinth
+  // rather than leaving its downhill end suspended in the air.
+  const terrainLevels=[
+    H(x,z-14),H(x,z-7),H(x,z),H(x,z+7),H(x,z+14)
+  ];
+  const bottom=Math.min(...terrainLevels)-.85;
+  const ground=Math.max(...terrainLevels)+.18;
+  box(scene,mat.schoolDark,x,(ground+bottom)*.5,z,width+.65,ground-bottom,depth+.75);
+  box(scene,mat.school,x,ground+height*.5,z,width,height,depth);
+  box(scene,mat.schoolRoof,x,ground+height+.11,z,width+.7,.32,depth+.64);
+  box(scene,mat.schoolTrim,x+width*.5+.10,ground+height*.50,z,.25,height,depth+.2);
+
+  // The actual school has long blue-white classroom bands and stacked rows
+  // of windows, so the facade is recognizable even from the lower junction.
+  for(let floor=0;floor<6;floor++){
+    const yy=ground+2.2+floor*2.88;
+    for(let col=0;col<8;col++){
+      const zz=z+(col-3.5)*3.13;
+      box(scene,mat.schoolTrim,x+width*.5+.22,yy,zz,.22,1.82,2.54);
+      box(scene,mat.schoolGlass,x+width*.5+.34,yy,zz,.25,1.62,2.32);
+    }
+    box(scene,mat.schoolBlue,x+width*.5+.39,ground+3.23+floor*2.88,z,.26,.32,depth-.38);
   }
-  const wallMat=new T.MeshStandardMaterial({color:'#b7a18f',side:T.DoubleSide,roughness:1});
-  for(const [from,to] of [[54,64],[74,92]]){
+  // The downhill-facing end is visible as visitors approach the fork.
+  for(let floor=0;floor<5;floor++)for(let col=0;col<4;col++){
+    const xx=x+(col-1.5)*4.15,yy=ground+2.28+floor*3.03;
+    box(scene,mat.schoolTrim,xx,yy,z+depth*.5+.07,3.15,1.82,.20);
+    box(scene,mat.schoolGlass,xx,yy,z+depth*.5+.19,2.89,1.62,.23);
+  }
+  const frontSign=new T.Mesh(
+    new T.PlaneGeometry(12.8,1.58),
+    new T.MeshBasicMaterial({
+      map:textTexture('상명대학교 사범대학','부속초등학교','#f3f5f4','#36556b'),
+      side:T.DoubleSide
+    })
+  );
+  frontSign.position.set(x,ground+height-.95,z+depth*.5+.34);
+  scene.add(frontSign);
+
+  // A grade-following roadside fence frames the LEFT corner of the first
+  // junction. Leave a broad opening for the school gate at z≈162.
+  const wallMat=new T.MeshStandardMaterial({color:'#c6c4b9',side:T.DoubleSide,roughness:1});
+  for(const [from,to] of [[136,155],[169,184]]){
     const verts=[],indices=[],sections=Math.ceil((to-from)/.8);
     for(let i=0;i<=sections;i++){
       const zz=from+(to-from)*i/sections;
-      const xx=C(zz)+8.9,base=H(xx,zz);
-      verts.push(xx,base-.13,zz,xx,base+1.57,zz);
+      const xx=C(zz)-8.9,base=H(xx,zz);
+      verts.push(xx,base-.16,zz,xx,base+1.38,zz);
       if(i<sections){const k=2*i;indices.push(k,k+1,k+2,k+1,k+3,k+2);}
     }
     const geo=new T.BufferGeometry();
@@ -120,20 +151,24 @@ function primarySchool(scene,C,H){
     geo.setIndex(indices);geo.computeVertexNormals();
     const mesh=new T.Mesh(geo,wallMat);mesh.receiveShadow=true;scene.add(mesh);
   }
-  const gateZ=69,gateX=C(gateZ)+8.85,gateY=H(gateX,gateZ);
-  for(const dz of [-4.25,4.25])
-    box(scene,mat.schoolDark,gateX,gateY+1.64,gateZ+dz,.62,3.28,.72);
-  box(scene,mat.schoolRoof,gateX,gateY+3.33,gateZ,.85,.25,9.02);
+  const gateZ=162,gateX=C(gateZ)-8.9,gateY=H(gateX,gateZ);
+  for(const dz of [-6.4,6.4]){
+    const zz=gateZ+dz,px=C(zz)-8.9,py=H(px,zz);
+    box(scene,mat.schoolDark,px,py+1.66,zz,.64,3.32,.70);
+  }
+  // Keep the lintel shallow so the downhill view is not blocked.
+  box(scene,mat.schoolRoof,gateX,gateY+3.47,gateZ,.95,.26,13.2);
   facadeLabel(scene,{
     name:'상명사대부속초등학교',sub:'홍지문2길 1',
-    x:gateX-.48,y:gateY+2.55,z:gateZ,width:7.52,height:1.28,
-    bg:'#58736b',face:-1
+    x:gateX+.49,y:gateY+2.62,z:gateZ,width:7.52,height:1.24,
+    bg:'#42687a',face:1
   });
-  for(let i=0;i<14;i++){
-    const zz=gateZ-3.50+i*.52;
-    box(scene,mat.metal,gateX,gateY+1.08,zz,.07,2.12,.07);
+  for(const [from,to] of [[136,154],[170,184]]){
+    for(let zz=from;zz<=to;zz+=1.32){
+      const xx=C(zz)-8.94,yy=H(xx,zz);
+      box(scene,mat.metal,xx,yy+1.60,zz,.07,.78,.07);
+    }
   }
-  // Keep the opening into the upcoming left turn unobstructed.
 }
 function storeBlock(scene,C,H){
   // Public records place both businesses at Hongjimun 2-gil 7; Budaetongryeong
