@@ -6,10 +6,11 @@ import { addHillStreetscape, streetSurfaceMaterials } from './hill-streetscape.j
 import { addLowerHillApproach } from './hill-approach.js';
 
 // A painterly reinterpretation of the memorable Sangmyung uphill walk, not a survey map.
-const edgeA = -112, edgeB = 245;
+const edgeA = -112, edgeB = 335;
 // Bottom junction -> school on the LEFT -> immediate LEFT into a steep
 // restaurant hill. Uphill is decreasing Z, and the path stays continuous.
 const clampRoute = (v,a,b) => Math.max(a,Math.min(b,v));
+const START_Z = 285; // Extra downhill approach before the first junction
 const smoothRoute = t => {t=clampRoute(t,0,1);return t*t*(3-2*t);};
 const oldUpperCenter = z => 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7);
 // First fork finishes before the school exit. A SECOND left turn begins
@@ -23,33 +24,32 @@ const sidePoint = (s,off) => {
   return {x:center(s)+off*normal,z:s-off*d*normal};
 };
 const closestRouteZ = (x,z) => {
-  let best=clampRoute(z,-105,230),bestDistance=Infinity;
+  let best=clampRoute(z,-105,316),bestDistance=Infinity;
   for(let i=-6;i<=6;i++) {
-    const s=clampRoute(z+i*1.55,-105,230);
+    const s=clampRoute(z+i*1.55,-105,316);
     const dist=(center(s)-x)**2+(s-z)**2;
     if(dist<bestDistance){bestDistance=dist;best=s;}
   }
   for(let i=0;i<4;i++) {
     const d=centerSlope(best);
     const step=((center(best)-x)*d+(best-z))/(1+d*d);
-    best=clampRoute(best-clampRoute(step,-2.0,2.0),-105,230);
+    best=clampRoute(best-clampRoute(step,-2.0,2.0),-105,316);
   }
   return best;
 };
 const straightFork = z => center(169)+(169-z)*.035;
 const schoolFork = z => center(141)+(141-z)*.025;
-// Climb noticeably from the VERY BOTTOM through the elementary-school
-// frontage (z=215 -> z=158): ~22% projected grade rather than ~14%.
-// After the school (z≈141) the left-turn restaurant hill becomes steeper,
-// then the slope eases smoothly before the 7016 bus stop. Grade and height
-// are continuous, so characters, sidewalks, school fences and buildings
-// all follow the same ground surface without a sudden height step.
+// The commute now starts substantially farther DOWN the real hill.
+// Maintain ~41% longitudinal rise from z=285 through the elementary school
+// (was 22% from z=215), then smoothly increase to ~49% on the left-turn
+// restaurant stretch. Smooth grade ramps prevent steps and sudden crests.
+// These are stylized scene units, not measured real-world road gradients.
 const gradeRamp = (distance,width) => distance<=0?0:distance<width
   ? distance*distance/(2*width) : distance-width/2;
-const climb = z => 7.2+.22*(215-z)
-  + .18*gradeRamp(141-z,11)
-  - .22*gradeRamp(16-z,22)
-  - .06*gradeRamp(-25-z,14)
+const climb = z => 7.2+.41*(START_Z-z)
+  + .08*gradeRamp(141-z,11)
+  - .28*gradeRamp(16-z,22)
+  - .08*gradeRamp(-25-z,14)
   + .12*Math.sin((z+9)*.053);
 
 function groundHeight(x,z) {
@@ -78,13 +78,13 @@ function canWalk(x,z) {
   const s=closestRouteZ(x,z);
   const distance=Math.hypot(x-center(s),z-s);
   const busZ=-79, busX=center(busZ)+1.85;
-  return s>-98 && s<233 && distance<8.15
+  return s>-98 && s<310 && distance<8.15
     && !(Math.abs(x-busX)<1.30 && Math.abs(z-busZ)<3.52);
 }
 const c = v => new T.Color(v);
 
 function land(scene) {
-  const nx=181,nz=294, positions=[],colors=[],indices=[];
+  const nx=181,nz=355, positions=[],colors=[],indices=[];
   const meadow=c('#536b49'), leaf=c('#84975e'), moss=c('#355c51'), stone=c('#80776c');
   const color=new T.Color();
   for(let j=0;j<nz;j++) {
@@ -111,7 +111,7 @@ function land(scene) {
 
 function ribbon(scene,left,right,z0,z1,mat,lift=.065) {
   const positions=[],uv=[],idx=[];
-  const steps=324;
+  const steps=422;
   for(let j=0;j<=steps;j++) {
     const z=z0+(z1-z0)*j/steps;
     for(const off of [left,right]){
@@ -138,12 +138,13 @@ function makeRoad(scene) {
   const pavement=surface.sidewalk;
   const line=new T.MeshBasicMaterial({color:'#d8c49a',side:T.DoubleSide});
   const border=new T.MeshStandardMaterial({color:'#b6ac9b',roughness:.95,side:T.DoubleSide});
-  ribbon(scene,-3.95,3.95,-105,230,road,.095);
-  ribbon(scene,-6.7,-4.2,-105,230,pavement,.16);
-  ribbon(scene,4.2,6.7,-105,230,pavement,.16);
-  ribbon(scene,-4.20,-4.07,-105,230,border,.22);
-  ribbon(scene,4.07,4.20,-105,230,border,.22);
-  ribbon(scene,-.075,.075,-105,230,line,.111);
+  const lowerEnd=318; // Include road, both sidewalks and centerline below spawn.
+  ribbon(scene,-3.95,3.95,-105,lowerEnd,road,.095);
+  ribbon(scene,-6.7,-4.2,-105,lowerEnd,pavement,.16);
+  ribbon(scene,4.2,6.7,-105,lowerEnd,pavement,.16);
+  ribbon(scene,-4.20,-4.07,-105,lowerEnd,border,.22);
+  ribbon(scene,4.07,4.20,-105,lowerEnd,border,.22);
+  ribbon(scene,-.075,.075,-105,lowerEnd,line,.111);
   // Soft roadside stones and garden strips break up the straight road edges.
   const random=rng(718);
   const stones=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),new T.MeshStandardMaterial({color:'#858579',roughness:1}),160);
@@ -297,7 +298,7 @@ export function makeHill(scene,time,compact=false) {
     return groundHeight(x,z)+(offset<=3.95?.095:offset>=4.2&&offset<=6.7?.16:.02);
   };
   const terrain={
-    spawn:sidePoint(215,-5.35),
+    spawn:sidePoint(START_Z,-5.35),
     spawnFor(id){
       const point=HILL_CHECKPOINTS.find(p=>p.id===id);
       return point ? sidePoint(point.z,-5.35) : this.spawn;
