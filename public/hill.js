@@ -7,18 +7,16 @@ import { addLowerHillApproach } from './hill-approach.js';
 
 // A painterly reinterpretation of the memorable Sangmyung uphill walk, not a survey map.
 const edgeA = -112, edgeB = 245;
-// Street-video path: below the junction the road is nearly straight, then the
-// Sangmyung uphill route branches LEFT towards the school. Going uphill is -Z.
-// Keep the entire old upper road untouched past z=86.
+// Bottom junction -> school on the LEFT -> immediate LEFT into a steep
+// restaurant hill. Uphill is decreasing Z, and the path stays continuous.
 const clampRoute = (v,a,b) => Math.max(a,Math.min(b,v));
 const smoothRoute = t => {t=clampRoute(t,0,1);return t*t*(3-2*t);};
 const oldUpperCenter = z => 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7);
-// Descending Z represents an uphill walk. The first fork at z=169 sends the
-// route left; AFTER the school at z≈65 another distinct left turn occurs.
-// That second bend leads onto the restaurant street, as in the supplied video.
+// First fork finishes before the school exit. A SECOND left turn begins
+// immediately after the school at z≈140 rather than 100m farther uphill.
 const center = z => oldUpperCenter(z)
-  + 41*smoothRoute((z-86)/83)
-  - 31*smoothRoute((64-z)/40);
+  + 41*smoothRoute((z-145)/24)
+  - 31*smoothRoute((140-z)/35);
 const centerSlope = z => (center(z+.06)-center(z-.06))/.12;
 const sidePoint = (s,off) => {
   const d=centerSlope(s),normal=1/Math.hypot(1,d);
@@ -39,25 +37,26 @@ const closestRouteZ = (x,z) => {
   return best;
 };
 const straightFork = z => center(169)+(169-z)*.035;
-const schoolFork = z => center(59)+(59-z)*.025;
-// Continuous grade profile. The lower street is gentle, then becomes
-// noticeably steeper AFTER the school; it eases near the 7016 bus stop.
+const schoolFork = z => center(141)+(141-z)*.025;
+// Continuous grade profile: lower junction gentle, steep as soon as the
+// school exit is behind us, easing again before the 7016 bus stop.
 const gradeRamp = (distance,width) => distance<=0?0:distance<width
   ? distance*distance/(2*width) : distance-width/2;
-const climb = z => 7.2+(49-Math.min(z,86))*.252 - Math.max(0,z-86)*.14
-  + .36*Math.sin((z+9)*.053)
-  + .08*gradeRamp(60-z,12)
-  - .21*gradeRamp(-12-z,14);
+const climb = z => 7.2+.14*(215-z)
+  + .26*gradeRamp(141-z,11)
+  - .22*gradeRamp(16-z,22)
+  - .06*gradeRamp(-25-z,14)
+  + .12*Math.sin((z+9)*.053);
 
 function groundHeight(x,z) {
   const onRoute=Math.abs(x-center(z))/Math.hypot(1,centerSlope(z));
   // The right-hand through street has its own terrain corridor; otherwise
   // its surface rises into a hillside after the left turn.
-  const forkWeight=smooth(91,119,z)*(1-smooth(153,169,z));
+  const forkWeight=smooth(95,110,z)*(1-smooth(155,169,z));
   const straightDistance=Math.abs(x-straightFork(z))+12*(1-forkWeight);
   // A side street continues ahead at the school's second junction while the
   // actual commute cuts left. Ground both branches on the same hillside.
-  const schoolBranchWeight=smoothRoute((61-z)/12)*(1-smoothRoute((31-z)/12));
+  const schoolBranchWeight=smoothRoute((146-z)/14)*(1-smoothRoute((82-z)/14));
   const schoolDistance=Math.abs(x-schoolFork(z))+12*(1-schoolBranchWeight);
   const dx=Math.min(onRoute,straightDistance,schoolDistance);
   const shoulder=Math.min(48,Math.max(0,dx-7.2));
