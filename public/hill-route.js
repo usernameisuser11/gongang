@@ -220,7 +220,10 @@ function schoolStraightStreet(scene,C,H,F){
       const t=i/n,z=z0+(z1-z0)*t;
       const u=Math.max(0,Math.min(1,(z1-z)/15));
       const ease=u*u*(3-2*u);
-      for(const off of [a*ease,b*ease]){
+      const mid=(a+b)*.5,half=(b-a)*.5;
+      // Asphalt narrows to a center tip; pavement narrows along its own curb.
+      const narrowing=material===street?0:1;
+      for(const off of [mid*(narrowing?1:ease)-half*ease,mid*(narrowing?1:ease)+half*ease]){
         const x=F(z)+off;
         points.push(x,H(x,z)+lift,z);
       }
