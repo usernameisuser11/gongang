@@ -26,9 +26,15 @@ assert.ok(schoolFork(90)-center(90)>20,'school exit needs a visibly separate str
 assert.equal(canWalk(schoolFork(90),90),false,'guided travellers must take the LEFT uphill street');
 assert.ok(routeCode.includes('function schoolStraightStreet'),'the second school junction must be rendered');
 assert.ok(routeCode.includes("name:'7016"),'final 7016 stop must have a visible sign');
+// Regression: the lower entrance must already feel like an incline, well
+// before the school or restaurant turn, without turning into a vertical wall.
+const bottomGrade=(climb(187)-climb(215))/28;
+const elementaryGrade=(climb(158)-climb(177))/19;
 const gentleGrade=(climb(151)-climb(178))/27;
 const restaurantGrade=(climb(96)-climb(123))/27;
 const arrivalGrade=(climb(-90)-climb(-70))/20;
+assert.ok(bottomGrade>.20 && bottomGrade<.30,'start to fork must be visibly uphill');
+assert.ok(elementaryGrade>.20 && elementaryGrade<.30,'fork to elementary school must remain steep');
 assert.ok(restaurantGrade>gentleGrade*1.7,'shop street must be substantially steeper than lower approach');
 assert.ok(restaurantGrade>arrivalGrade*1.55,'grade must ease before the 7016 bus stop');
 assert.ok(Math.abs(closestRouteZ(center(44),44)-44)<.15,'route projection must remain continuous');
