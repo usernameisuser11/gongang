@@ -129,16 +129,21 @@ function lowerStreet(scene,C,H){
   }
 }
 function straightContinuation(scene,C,H){
-  // Street-view ~00:28: at the red-paved fork the photographed commute takes
-  // the LEFT-hand rising road. The visible straight street is NOT the route.
-  // The left road is the shared curved ribbon from hill.js; this is a separate
-  // right-hand continuation joining at z≈155.
-  raisedStrip(scene,C,H,99,159,()=>-3.25,()=>3.25,mats.road,.112);
-  raisedStrip(scene,C,H,99,157,()=>3.47,()=>5.70,mats.concrete,.160);
-  raisedStrip(scene,C,H,99,157,()=>-5.70,()=>-3.47,mats.concrete,.160);
-  raisedStrip(scene,C,H,104,146,()=>-.045,()=>.045,mats.white,.135);
-  // A little warning at the split, and narrower red safety paint behind it.
-  const signZ=142,signX=C(signZ)+7.45,signY=H(signX,signZ);
+  // The hillside commute takes the LEFT road; the RIGHT branch is scenery.
+  // Narrow both ends into a taper so the secondary sidewalks cannot cross
+  // the main roadway as enormous gray triangular / X-shaped surfaces.
+  const taper=t=>{
+    const u=Math.max(0,Math.min(1,(1-t)/.27));
+    return u*u*(3-2*u);
+  };
+  raisedStrip(scene,C,H,102,162,t=>-3.32*taper(t),t=>3.32*taper(t),mats.road,.079);
+  // Pavements stop before the asphalt reaches the primary fork. They never
+  // form the giant gray slabs previously seen over the centerline.
+  raisedStrip(scene,C,H,104,149,t=>-5.48*taper(t),t=>-3.89*taper(t),mats.concrete,.128);
+  raisedStrip(scene,C,H,104,149,t=>3.89*taper(t),t=>5.48*taper(t),mats.concrete,.128);
+  // Only the fully separated portion has an additional road marking.
+  raisedStrip(scene,C,H,105,131,()=>-.045,()=>.045,mats.white,.115);
+  const signZ=137,signX=C(signZ)+7.3,signY=H(signX,signZ);
   cube(mats.rail,signX,signY+1.90,signZ,.11,3.80,.11);
   canvasSign(scene,'좌측 상명대','통학로 · 서행',signX-.25,signY+3.45,signZ,3.25,1.08);
 }
@@ -190,9 +195,7 @@ function lowShops(scene,C,H){
   for(const [k,z,side,offset,width,depth,ht] of [
     [0,204,-1,18.7,11.0,14,9.8],
     // The former placeholder at z=176 hid the school on the fork's left.
-    [2,137,1,29.0,17.0,14,11.8],
-    [0,114,-1,17.8,10.4,13,10.8],
-    [2,91,-1,19.6,9.1,11,8.2]
+    [2,137,1,29.0,17.0,14,11.8]
   ]){
     const x=C(z)+side*offset,ground=H(x,z);
     cube(mats.concrete,x,ground-.46,z,width+.2,1.2,depth+.25);
