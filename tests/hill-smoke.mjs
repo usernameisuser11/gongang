@@ -132,9 +132,15 @@ try {
   await previewDesktop.page.screenshot({path:'artifacts/hill-desktop.png',timeout:30000});
   assert.match(await previewDesktop.page.locator('[data-journey-label]').innerText(),/1\/9.*언덕 맨 아래/);
   assert.equal(parseFloat(await previewDesktop.page.locator('[data-journey-fill]').evaluate(node=>node.style.width)),0);
+  const journeyToggle = previewDesktop.page.locator('[data-journey-toggle]');
   const walkButton = previewDesktop.page.locator('[data-journey-walk]');
-  assert.equal(await walkButton.isVisible(), true, 'guided hill walking button visible');
+  assert.equal(await journeyToggle.getAttribute('aria-expanded'),'false','journey panel starts minimized');
+  assert.equal(await walkButton.isVisible(),false,'walk controls should not obscure the view');
+  await journeyToggle.click();
+  assert.equal(await journeyToggle.getAttribute('aria-expanded'),'true','journey detail expands on tap');
+  assert.equal(await walkButton.isVisible(), true, 'guided hill walking button visible when expanded');
   await walkButton.click();
+  assert.equal(await journeyToggle.getAttribute('aria-expanded'),'false','journey auto-collapses after walking starts');
   await waitUntil(async () => parseFloat(await previewDesktop.page.locator('[data-journey-fill]').evaluate(node => node.style.width)) > .5, 'guided uphill travel');
   assert.equal(await walkButton.getAttribute('aria-pressed'), 'true');
   // A manual WASD input must immediately cancel the optional route assistant.
@@ -145,6 +151,13 @@ try {
   const previewMobile=await preparePage(browser,{
     viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true
   });
+  // Phone screenshot must show the compact one-line progress pill, not
+  // the oversized location card that previously covered the streetscape.
+  const mobileJourney=previewMobile.page.locator('[data-journey]');
+  const mobileBox=await mobileJourney.boundingBox();
+  assert.ok(mobileBox && mobileBox.height<70 && mobileBox.width<210,
+    'default mobile journey must be a small pill: '+JSON.stringify(mobileBox));
+  assert.equal(await previewMobile.page.locator('[data-journey-walk]').isVisible(),false);
   await previewMobile.page.screenshot({path:'artifacts/hill-mobile.png',timeout:30000});
   await previewMobile.context.close();
 
@@ -160,6 +173,8 @@ try {
   // steep shop lane without stopping or walking into the straight side street.
   const schoolGuide=await preparePage(browser,{viewport:{width:1100,height:680}},'elementary',true);
   const guideButton=schoolGuide.page.locator('[data-journey-walk]');
+  const schoolToggle=schoolGuide.page.locator('[data-journey-toggle]');
+  await schoolToggle.click();
   await guideButton.click();
   await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='true',
     'guided school walk activation',25000);
@@ -173,6 +188,7 @@ try {
   },'guided left turn immediately after elementary school',60000);
   await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='false',
     'finish the school junction guided stage',35000);
+  await schoolToggle.click();
   await guideButton.click(); // Continue from the junction onto the shop climb.
   await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='true',
     'guided restaurant stage activation',25000);
