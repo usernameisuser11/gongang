@@ -235,7 +235,17 @@ function buildInterface(root) {
       <p class="cliff-tagline">수업과 수업 사이, 상명인을 위한 작은 쉼터</p>
       <p class="cliff-status" data-status role="status">잠시 쉬어가는 중</p>
       <label class="cliff-world">풍경 <select data-world aria-label="풍경 선택"><option value="cliff">바람의 절벽</option><option value="hill">상명의 언덕길</option></select></label>
-      <div class="cliff-journey" data-journey hidden aria-live="off"><span data-journey-label>등굣길 시작</span><div class="cliff-journey-track"><i data-journey-fill></i></div><small data-journey-next>언덕 아래</small><button class="cliff-journey-walk" type="button" data-journey-walk aria-pressed="false">다음 장소까지 걷기</button></div>
+      <section class="cliff-journey" data-journey hidden aria-label="등굣길 진행 상황">
+        <button class="cliff-journey-toggle" type="button" data-journey-toggle aria-expanded="false" aria-controls="cliff-journey-details" aria-label="등굣길 진행 상황 펼치기">
+          <span class="cliff-journey-label" data-journey-label>등굣길 시작</span>
+          <span class="cliff-journey-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="cliff-journey-track" aria-hidden="true"><i data-journey-fill></i></div>
+        <div class="cliff-journey-details" data-journey-details id="cliff-journey-details" hidden>
+          <small data-journey-next>언덕 아래</small>
+          <button class="cliff-journey-walk" type="button" data-journey-walk aria-pressed="false">다음 장소까지 걷기</button>
+        </div>
+      </section>
     </header>
     <div class="cliff-hint" data-hint></div>
     <button class="cliff-icon cliff-settings" type="button" data-settings aria-label="동행 및 조작 설정" aria-expanded="false">${icon('settings')}</button>
@@ -398,6 +408,15 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const panel = ui.querySelector('[data-panel]');
   const settings = ui.querySelector('[data-settings]');
   const journey = ui.querySelector('[data-journey]');
+  const journeyToggle = ui.querySelector('[data-journey-toggle]');
+  const journeyDetails = ui.querySelector('[data-journey-details]');
+  const setJourneyExpanded = (expanded) => {
+    journeyDetails.hidden = !expanded;
+    journeyToggle.setAttribute('aria-expanded', String(expanded));
+    journeyToggle.setAttribute('aria-label', expanded ? '등굣길 진행 상황 접기' : '등굣길 진행 상황 펼치기');
+  };
+  journeyToggle.addEventListener('click', () =>
+    setJourneyExpanded(journeyDetails.hidden));
   const journeyLabel = ui.querySelector('[data-journey-label]');
   const journeyNext = ui.querySelector('[data-journey-next]');
   const journeyFill = ui.querySelector('[data-journey-fill]');
@@ -452,6 +471,9 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       destination = null;
       if(pose === 'sit' || pose === 'lie') setPose('idle');
     }
+    // Hide the large detail panel once guided walking begins or stops so
+    // the landscape stays unobstructed; the compact status remains visible.
+    setJourneyExpanded(false);
     fadeHint();
   });
   const hint = ui.querySelector('[data-hint]');
