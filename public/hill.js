@@ -15,8 +15,8 @@ const oldUpperCenter = z => 2.35*Math.sin((z+4)*.052)+1.35*Math.sin(z*.026+1.7);
 // First fork finishes before the school exit. A SECOND left turn begins
 // immediately after the school at z≈140 rather than 100m farther uphill.
 const center = z => oldUpperCenter(z)
-  + 41*smoothRoute((z-145)/24)
-  - 31*smoothRoute((140-z)/35);
+  + 26*smoothRoute((z-137)/40)
+  - 26*smoothRoute((136-z)/43);
 const centerSlope = z => (center(z+.06)-center(z-.06))/.12;
 const sidePoint = (s,off) => {
   const d=centerSlope(s),normal=1/Math.hypot(1,d);
@@ -52,7 +52,7 @@ function groundHeight(x,z) {
   const onRoute=Math.abs(x-center(z))/Math.hypot(1,centerSlope(z));
   // The right-hand through street has its own terrain corridor; otherwise
   // its surface rises into a hillside after the left turn.
-  const forkWeight=smooth(95,110,z)*(1-smooth(155,169,z));
+  const forkWeight=smooth(85,100,z)*(1-smooth(155,169,z));
   const straightDistance=Math.abs(x-straightFork(z))+12*(1-forkWeight);
   // A side street continues ahead at the school's second junction while the
   // actual commute cuts left. Ground both branches on the same hillside.
