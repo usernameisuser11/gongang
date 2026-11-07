@@ -298,26 +298,67 @@
   .cliff-ui * { transition-duration: 0ms !important; }
 }
 
-/* Small guided-walk progress indicator shown only in the hill world. */
+/* Minimal route HUD. Compact by default; tap it for the walk controls.
+   On mobile it leaves the campus view unobstructed. */
 .cliff-journey {
-  margin-top: 11px;
-  width: min(265px, calc(100vw - 42px));
-  padding: 9px 12px;
-  border: 1px solid rgba(255,235,204,.23);
-  border-radius: 12px;
-  background: rgba(34,39,37,.64);
-  backdrop-filter: blur(9px);
+  margin-top: 9px;
+  width: min(204px, calc(100vw - 42px));
+  box-sizing: border-box;
+  padding: 0;
+  border: 1px solid rgba(255,235,204,.27);
+  border-radius: 14px;
+  background: rgba(27,35,34,.66);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 3px 13px rgba(19,25,24,.15);
   font-size: 11px;
   color: #f5e7d3;
+  overflow: hidden;
+  pointer-events: auto;
+}
+.cliff-journey:has(.cliff-journey-details:not([hidden])) {
+  width: min(258px, calc(100vw - 42px));
+}
+.cliff-journey-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 40px;
   box-sizing: border-box;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  line-height: 1.2;
+  font-size: 11px !important;
+  font-weight: 600;
+}
+.cliff-journey-label {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cliff-journey-chevron {
+  flex: 0 0 auto;
+  font-size: 17px;
+  color: #ebd3b6;
+  line-height: .8;
+  transition: transform 160ms ease;
+}
+.cliff-journey-toggle[aria-expanded="true"] .cliff-journey-chevron {
+  transform: rotate(180deg);
 }
 .cliff-journey-track {
   position: relative;
   overflow: hidden;
-  margin: 8px 0 6px;
-  height: 4px;
-  border-radius: 20px;
-  background: rgba(237,228,212,.23);
+  margin: 0 10px 6px;
+  height: 3px;
+  border-radius: 10px;
+  background: rgba(237,228,212,.25);
 }
 .cliff-journey-track i {
   display: block;
@@ -327,11 +368,20 @@
   background: #eac99a;
   transition: width 250ms ease-out;
 }
-.cliff-journey small {font-size:10px; color:var(--cliff-muted);}
+.cliff-journey-details {
+  padding: 2px 10px 10px;
+}
+.cliff-journey-details small {
+  display: block;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--cliff-muted);
+}
 .cliff-journey-walk {
   display: block;
   width: 100%;
-  margin-top: 8px;
+  min-height: 36px;
+  margin-top: 7px;
   padding: 7px 8px;
   border: 1px solid rgba(255, 231, 194, .38);
   border-radius: 8px;
@@ -343,6 +393,20 @@
 }
 .cliff-journey-walk[aria-pressed="true"] { background: rgba(111, 90, 65, .78); }
 .cliff-journey-walk:disabled { opacity: .55; cursor: default; }
+
 @media (max-width: 600px) {
-  .cliff-journey {width:min(224px,calc(100vw - 35px)); padding:7px 10px;}
+  .cliff-journey {
+    width: min(188px, calc(100vw - 36px));
+    margin-top: 7px;
+    border-radius: 13px;
+  }
+  .cliff-journey:has(.cliff-journey-details:not([hidden])) {
+    width: min(238px, calc(100vw - 36px));
+  }
+  .cliff-journey-toggle {
+    min-height: 39px;
+    padding: 7px 9px;
+    font-size: 10px !important;
+  }
+  .cliff-journey-track {margin: 0 9px 5px;}
 }
