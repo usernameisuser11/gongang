@@ -189,7 +189,7 @@ function lowShops(scene,C,H){
   ];
   for(const [k,z,side,offset,width,depth,ht] of [
     [0,204,-1,18.7,11.0,14,9.8],
-    [1,176,-1,17.1,9.6,13,9.6],
+    // The former placeholder at z=176 hid the school on the fork's left.
     [2,137,1,29.0,17.0,14,11.8],
     [0,114,-1,17.8,10.4,13,10.8],
     [2,91,-1,19.6,9.1,11,8.2]
