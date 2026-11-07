@@ -8,7 +8,7 @@ const routeCode=readFileSync(new URL('../public/hill-route.js',import.meta.url),
 const checkpointMatch=routeCode.match(/export const HILL_CHECKPOINTS = Object\.freeze\((\[[\s\S]*?\])\);/);
 assert.ok(checkpointMatch,'commute checkpoint list missing');
 const checkpoints=new Function('return '+checkpointMatch[1])();
-assert.deepEqual(checkpoints.map(p=>p.id),['start','entrance','lower-slope','elementary','school-turn','steep-shops','yungane','budaetong','university']);
+assert.deepEqual(checkpoints.map(p=>p.id),['start','entrance','elementary','school-turn','lower-slope','steep-shops','yungane','budaetong','university']);
 assert.equal(checkpoints[0].z,215,'default spawn must start at the true bottom of the extended hill');
 assert.ok(checkpoints.every((p,i)=>i===0 || checkpoints[i-1].z>p.z),'landmark order');
 const hillCode=readFileSync(new URL('../public/hill.js',import.meta.url),'utf8');
@@ -17,37 +17,40 @@ assert.ok(routeLogic.includes('function canWalk'),'walkability logic missing');
 const {center,canWalk,straightFork,schoolFork,sidePoint,climb,closestRouteZ}=new Function(routeLogic+';return {center,canWalk,straightFork,schoolFork,sidePoint,climb,closestRouteZ};')();
 // Start on a calm lower straight, then clearly take the LEFT uphill branch.
 assert.ok(Math.abs(center(215)-center(177))<6,'lower road must begin nearly straight');
-assert.ok(center(160)-center(102)>24,'commute must turn left after the fork');
-assert.ok(Math.abs(center(160)-straightFork(160))<4,'left branch and through street meet');
-assert.ok(straightFork(104)-center(104)>20,'straight road must separate to the right');
-assert.ok(center(56)-center(30)>20,'a SECOND left turn must follow the primary school');
-assert.ok(Math.abs(center(28)-center(5))<6,'restaurant lane should straighten after school turn');
-assert.ok(schoolFork(30)-center(30)>20,'school exit needs a visibly separate straight road');
-assert.equal(canWalk(schoolFork(30),30),false,'guided travellers must take the LEFT uphill street');
+assert.ok(center(168)-center(146)>18,'first LEFT branch must bend before the school');
+assert.ok(Math.abs(center(168)-straightFork(168))<5,'left branch and through street meet');
+assert.ok(straightFork(130)-center(130)>20,'straight road must separate to the right');
+assert.ok(center(139)-center(105)>22,'SECOND left turn must begin immediately after school');
+assert.ok(Math.abs(center(78)-center(54))<7,'restaurant lane should straighten after school turn');
+assert.ok(schoolFork(90)-center(90)>20,'school exit needs a visibly separate straight road');
+assert.equal(canWalk(schoolFork(90),90),false,'guided travellers must take the LEFT uphill street');
 assert.ok(routeCode.includes('function schoolStraightStreet'),'the second school junction must be rendered');
 assert.ok(routeCode.includes("name:'7016"),'final 7016 stop must have a visible sign');
-const gentleGrade=(climb(150)-climb(175))/25;
-const restaurantGrade=(climb(10)-climb(34))/24;
+const gentleGrade=(climb(151)-climb(178))/27;
+const restaurantGrade=(climb(96)-climb(123))/27;
 const arrivalGrade=(climb(-90)-climb(-70))/20;
 assert.ok(restaurantGrade>gentleGrade*1.7,'shop street must be substantially steeper than lower approach');
 assert.ok(restaurantGrade>arrivalGrade*1.55,'grade must ease before the 7016 bus stop');
 assert.ok(Math.abs(closestRouteZ(center(44),44)-44)<.15,'route projection must remain continuous');
 // The inside sidewalk must never fold back on itself at the school bend.
 // Exercise normal walking speed, rather than relying only on static checkpoints.
-let probe=sidePoint(81,-5.35);
-for(let i=0;i<320;i++){
+let probe=sidePoint(158,-5.35);
+for(let i=0;i<500;i++){
   const routeZ=closestRouteZ(probe.x,probe.z);
-  if(routeZ<45.5)break;
-  const target=sidePoint(Math.max(43,routeZ-2.2),-5.35);
+  if(routeZ<106)break;
+  const target=sidePoint(Math.max(104,routeZ-2.2),-5.35);
   const distance=Math.hypot(target.x-probe.x,target.z-probe.z);
   const ratio=distance>.0001?Math.min(1,3.65*.055/distance):0;
   const x=probe.x+(target.x-probe.x)*ratio,z=probe.z+(target.z-probe.z)*ratio;
   assert.ok(canWalk(x,z),'guided walker hit blocked terrain on school turn');
   probe={x,z};
 }
-assert.ok(closestRouteZ(probe.x,probe.z)<45.5,'school turn must remain passable at normal walk speed');
+assert.ok(closestRouteZ(probe.x,probe.z)<106,'school turn must remain passable at normal walk speed');
 const approachCode=readFileSync(new URL('../public/hill-approach.js',import.meta.url),'utf8');
 assert.ok(approachCode.includes('function straightContinuation'),'forked street missing');
+assert.ok(approachCode.includes('const taper=t=>'),'fork street must taper: no overlapping sidewalk wedges');
+assert.ok(approachCode.includes('raisedStrip(scene,C,H,104,149'),'fork sidewalks should stop short of intersection');
+assert.ok(routeCode.includes('const z=98,x=C(z)-15.6'),'restaurant block must be on steep climb');
 assert.ok(!approachCode.includes('parkedCar(scene,center,heightAt,194'),'start must remain free of cars');
 for(let z=checkpoints[0].z;z>=-73;z-=.5){
   for(const side of [-1,1]){
@@ -159,15 +162,15 @@ try {
     const pct=parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width));
     const active=await guideButton.getAttribute('aria-pressed');
     if(++diagnostics%20===1)console.log('school turn progress',pct,'active',active);
-    if(active==='false' && pct<59)throw new Error('Guided walk stopped before left turn: progress '+pct+'%');
-    return pct>59;
+    if(active==='false' && pct<25)throw new Error('Guided walk stopped before left turn: progress '+pct+'%');
+    return pct>26;
   },'guided second left turn after elementary school',60000);
   await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='false',
     'finish the school junction guided stage',35000);
   await guideButton.click(); // Continue from the junction onto the shop climb.
   await waitUntil(async()=>await guideButton.getAttribute('aria-pressed')==='true',
     'guided restaurant stage activation',25000);
-  await waitUntil(async()=>parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width))>65,
+  await waitUntil(async()=>parseFloat(await schoolGuide.page.locator('[data-journey-fill]').evaluate(n=>n.style.width))>29.7,
     'guided arrival on the steeper restaurant road',60000);
   await schoolGuide.page.screenshot({path:'artifacts/after-school-guided-turn.png',timeout:30000});
   await schoolGuide.context.close();
