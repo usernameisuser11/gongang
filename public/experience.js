@@ -694,6 +694,14 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   function startFilming(){
     if(recording) {stopFilming();return;}
     if(mapId!=='campus') return;
+    // An invisible recording UI needs a discoverable stop gesture on first use.
+    if(!preference('filmInstructionsSeen',false)){
+      const approved=window.confirm(
+        '풍경 동영상을 촬영할까요?\n\n촬영 중에는 버튼과 캐릭터가 모두 숨겨집니다.\n끝내려면 Esc 또는 R을 누르거나 화면을 빠르게 두 번 탭하세요.\n종료하면 영상이 자동 저장됩니다.'
+      );
+      if(!approved)return;
+      storePreference('filmInstructionsSeen',true);
+    }
     if(!element.captureStream || typeof MediaRecorder==='undefined'){
       statusText.textContent='이 브라우저에서는 영상 촬영을 지원하지 않아요.';
       return;
