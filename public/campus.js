@@ -193,11 +193,12 @@ function siteDetails(scene) {
 
 function teacherBuilding(scene) {
   const g=new T.Group();
+  g.position.x=-4.1;
   scene.add(g);
   // Brick-and-stone academic wing: lateral wall faces the central lawn.
-  box(g,brick,-18.3,7.15,-12.4,10.4,14.3,36);
-  box(g,brickLight,-18.3,14.37,-12.4,11.1,.45,36.65);
-  for(let row=0;row<4;row++){
+  box(g,brick,-18.3,8.75,-12.4,10.4,17.5,36);
+  box(g,brickLight,-18.3,17.65,-12.4,11.1,.45,36.65);
+  for(let row=0;row<5;row++){
     for(let column=0;column<12;column++){
       const z=-28.3+column*2.80,y=2.35+row*3.05;
       box(g,cream,-13.01,y,z,.105,2.10,1.74);
@@ -214,33 +215,45 @@ function teacherBuilding(scene) {
   box(g,cream,-18.0,5.14,6.25,7.2,.35,2.4);
   for(let i=0;i<3;i++) box(g,pathMat,-18, .10+i*.13,7.1+i*.65,7.0-i*.32,.26,.78);
   // Thin bands, pilasters and parapet give the brick facade an academic scale.
-  for(let y of [3.6,6.65,9.7,12.75]) box(g,brickLight,-12.96,y,-12.4,.18,.12,35.75);
+  for(let y of [3.6,6.65,9.7,12.75,15.8]) box(g,brickLight,-12.96,y,-12.4,.18,.12,35.75);
 }
 function libraryBuilding(scene) {
-  const g=new T.Group();scene.add(g);
-  // Pale structural frame with expansive blue-tinted glazing, stair/entrance mass.
-  box(g,white,18.1,8.1,-12.0,12.2,16.2,37.6);
-  box(g,glass,11.92,8.0,-12.0,.19,14.3,35.25);
-  for(let row=0;row<5;row++){
-    const y=2.12+row*2.77;
-    for(let c=0;c<14;c++){
-      const z=-29.6+c*2.67;
-      box(g,glassBlue,11.77,y,z,.085,2.18,2.16);
-      if(c%3===0)box(g,glass,11.714,y+.06,z-.48,.032,1.92,.42);
-      box(g,white,11.66,y,z+1.12,.13,2.48,.11);
+  const g=new T.Group();
+  g.position.x=4.9;
+  scene.add(g);
+  // Stepped modern building, with strong diagonal structural beams and open
+  // balcony layers visible beyond the pines in the supplied walkthrough.
+  const slate=mat('#5e676d'),offWhite=mat('#e2ddd2'),glassDark=mat('#55656b',{metalness:.1,roughness:.36});
+  const terracotta=mat('#9e655d');
+  box(g,offWhite,18.1,8.35,-12.0,12.2,16.7,37.6);
+  box(g,glassDark,11.87,8.35,-12.0,.17,13.7,35.4);
+  for(let level=0;level<5;level++){
+    const y=2.0+level*2.98;
+    for(let col=0;col<13;col++){
+      const z=-29.7+col*2.84;
+      box(g,glass,11.76,y,z,.08,2.3,2.35);
+      if(col%2===0)box(g,glassBlue,11.704,y+.16,z-.41,.025,1.85,.32);
+      box(g,offWhite,11.68,y,z+1.26,.15,2.6,.13);
     }
-    box(g,white,11.58,3.46+row*2.77,-12,.25,.29,35.85);
+    const ledge=box(g,slate,10.93,3.50+level*2.98,-12.0,2.55,.32,35.8);
+    ledge.rotation.z=.018*(level-2);
   }
-  for(const z of [-29.7,-21,-12.3,-3.6,5.1]) box(g,white,11.52,8,z,.35,16.2,.29);
-  box(g,white,18.1,16.37,-12.0,12.75,.6,38);
-  // South elevation and welcoming glass portal.
-  box(g,glassBlue,18.1,5.0,6.9,9.55,8.75,.12);
-  for(let x=14.1;x<22.5;x+=2.05)box(g,white,x,5,6.99,.14,8.6,.19);
-  box(g,white,18.1,9.38,7.02,10.3,.31,.32);
-  box(g,dark,18.1,1.78,7.10,4.0,3.30,.1);
-  box(g,glass,18.1,1.84,7.2,3.54,3.0,.05);
-  box(g,white,18.1,1.85,7.29,.08,3,.06);
-  for(let i=0;i<5;i++)box(g,pathMat,18.1,.09+i*.155,8.5+i*.66,10.3-i*.32,.31,.81);
+  // Cantilevered structure: dark edge beams reveal the right building's slope.
+  for(let k=0;k<5;k++){
+    const z=-30+k*8.9;
+    const diagonal=box(g,slate,10.7,9.3,z,.54,16.0,.45);
+    diagonal.rotation.z=-.20;
+    box(g,terracotta,13.45,8.4,z,.27,16.7,.29);
+  }
+  box(g,offWhite,18.1,16.91,-12.0,13.3,.65,38.4);
+  const roof=box(g,slate,10.2,17.5,-12.0,3.0,.48,38.0);
+  roof.rotation.z=-.11;
+  // Building entrance, railings and recessed glass on the approach side.
+  box(g,glassBlue,18.1,5.0,6.95,9.7,8.7,.12);
+  for(let x=14;x<22.5;x+=2.1)box(g,offWhite,x,5,7.06,.16,8.4,.2);
+  box(g,dark,18.1,1.76,7.18,4.05,3.2,.12);
+  box(g,glassDark,18.1,1.77,7.29,3.5,2.91,.07);
+  box(g,offWhite,18.1,1.75,7.33,.10,2.92,.08);
 }
 function bench(scene,x,z,angle) {
   const g=new T.Group();g.position.set(x,heightAt(x,z),z);g.rotation.y=angle;scene.add(g);
