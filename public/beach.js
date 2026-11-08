@@ -133,22 +133,32 @@ function foam(scene,time){
   const mesh=new T.Mesh(g,m);mesh.renderOrder=3;scene.add(mesh);
 }
 function seagrass(scene,compact){
-  const count=compact?2600:4600;
-  const pGeo=new T.BufferGeometry();
-  pGeo.setAttribute('position',new T.Float32BufferAttribute([
-    -.028,0,0, .021,.48,.01, .05,0,.02,
-    -.023,0,0, -.011,.29,.09, .035,0,.014
-  ],3));pGeo.computeVertexNormals();
-  const tufts=new T.InstancedMesh(pGeo,material('#85936c',{side:T.DoubleSide,vertexColors:true}),count);
-  const dummy=new T.Object3D(),t=new T.Color(),a=new T.Color('#a0a678'),b=new T.Color('#718e68');
+  // Sparse, rounded dune plants only; never use pointed triangle billboards.
+  // Keep the central sand clear for travelers to gather and take photos.
+  const count=compact?130:210;
+  const geometry=new T.SphereGeometry(1,12,7);
+  const duneMat=material('#ffffff',{roughness:1});
+  const plants=new T.InstancedMesh(geometry,duneMat,count);
+  const dummy=new T.Object3D(),color=new T.Color();
+  const olive=new T.Color('#9ba77c'),sage=new T.Color('#b4b28a');
   for(let i=0;i<count;i++){
-    let x,z;do{x=-57+random()*114;z=3+random()*52;}while(z-coast(x)<15&&Math.abs(x)<40);
-    dummy.position.set(x,heightAt(x,z)+.018,z);dummy.rotation.y=random()*6.283;
-    const scale=.5+random()*1.35;dummy.scale.set(scale,scale,scale);
-    dummy.updateMatrix();tufts.setMatrixAt(i,dummy.matrix);
-    tufts.setColorAt(i,t.copy(a).lerp(b,random()));
+    let x=0,z=0;
+    for(let trial=0;trial<24;trial++){
+      x=-55+random()*110;z=18+random()*38;
+      // Push vegetation to the dunes and far edges, away from beach seating.
+      if((Math.abs(x)>25||z>39)&&z-coast(x)>29)break;
+    }
+    const radius=.13+random()*.26;
+    dummy.position.set(x,heightAt(x,z)+radius*.20,z);
+    dummy.rotation.set(0,random()*Math.PI*2,0);
+    dummy.scale.set(radius*(1+random()*.8),radius*.26,radius*(.7+random()*.9));
+    dummy.updateMatrix();
+    plants.setMatrixAt(i,dummy.matrix);
+    plants.setColorAt(i,color.copy(olive).lerp(sage,random()));
   }
-  tufts.computeBoundingSphere();scene.add(tufts);
+  plants.instanceMatrix.needsUpdate=true;
+  plants.computeBoundingSphere();
+  scene.add(plants);
 }
 function boulder(scene,x,z,r,i){
   const geom=new T.IcosahedronGeometry(1,2);
