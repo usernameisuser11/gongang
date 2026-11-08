@@ -120,19 +120,6 @@ function coastalPines(scene, random) {
   timber.computeBoundingSphere();needles.computeBoundingSphere();
   scene.add(timber,needles);
 }
-function logs(scene){
-  const timber=material('#9b8069'),ends=material('#d0b18d');
-  // Low driftwood seating beside the central sand, leaving a gathering circle open.
-  for(const [x,z,a] of [[-13,7,.23],[12.5,6,-.35],[-17,22,.66],[18,20,-.65]]){
-    const g=new T.Group();g.position.set(x,heightAt(x,z)+.23,z);g.rotation.y=a;scene.add(g);
-    const body=new T.Mesh(new T.CylinderGeometry(.26,.31,3.9,9),timber);
-    body.rotation.z=Math.PI/2;g.add(body);
-    for(const sign of [-1,1]){
-      const end=new T.Mesh(new T.CylinderGeometry(.272,.272,.045,12),ends);
-      end.rotation.z=Math.PI/2;end.position.x=sign*1.95;g.add(end);
-    }
-  }
-}
 export function makeBeach(scene,time,compact,light){
   const moisture=makeBeachMoisture(time,compact);
   const ground=sand(scene,compact,moisture,light);
@@ -140,7 +127,6 @@ export function makeBeach(scene,time,compact,light){
   makeBeachBackdrop(T,scene,compact);
   for(let i=0;i<rocks.length;i++)boulder(scene,...rocks[i],i);
   coastalPines(scene,rng(26081108));
-  logs(scene);
   // Sparse dune grasses live on dry outer sand only, leaving the shared central
   // beach and the active swash completely open to visitors.
   addGroundCover(T,scene,{
