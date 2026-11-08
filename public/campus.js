@@ -18,7 +18,7 @@ const benches = [
 const benchSeats = benches.map(([x,z,yaw],id)=>({
   id, x:x-Math.sin(yaw)*.12, z:z-Math.cos(yaw)*.12, yaw,
   height:.43,
-  exitX:x-Math.sin(yaw)*1.85, exitZ:z-Math.cos(yaw)*1.85
+  exitX:x-Math.sin(yaw)*1.60, exitZ:z-Math.cos(yaw)*1.60
 }));
 function seatAt(x,z) {
   return benchSeats.find(seat => Math.hypot(x-seat.x,z-seat.z) < .35) ?? null;
