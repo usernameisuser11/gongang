@@ -1,7 +1,8 @@
 const palette = [0xd7a56d, 0x968473, 0x9c9c76, 0x8a9e9e, 0xb07d75, 0xc0a082, 0x9a889d, 0x88957c];
-const actionNames = { sit: '앉기', lie: '눕기', greet: '인사', signal: '빛', photo: '사진' };
+const actionNames = { sit: '앉기', lie: '눕기', greet: '인사', signal: '빛', photo: '사진', film: '영상' };
 const icons = {
   photo: '<path d="M4 7h4l2-2h4l2 2h4v12H4z"/><circle cx="12" cy="13" r="3.3"/>',
+  film: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/>',
   sit: '<circle cx="13" cy="5" r="1.6"/><path d="m12 9-2 4 4 2h4m-8-2-3 5h12"/>',
   lie: '<circle cx="5" cy="13" r="1.5"/><path d="m8 15 5-2 6 2M3 18h18"/>',
   greet: '<path d="M8 11V7m3 4V5m3 6V6m3 6V9m0 2v4c0 3-2 5-5 5h-1c-2 0-3-1-4-3l-2-4c-.5-1 .5-2 1.5-1.4L8 13v-3M3 8l1-2m16 0 1 2"/>',
@@ -259,8 +260,10 @@ function buildInterface(root) {
       <p class="cliff-panel-note" data-online></p>
       <ul class="cliff-companions" data-companions aria-label="현재 접속한 동행"></ul>
       <p class="cliff-panel-help">이동은 땅을 누르거나 방향키를 사용하세요. 화면을 끌면 시점이 돌아갑니다.</p>
+      <p class="cliff-panel-help" data-film-help hidden>영상 촬영 중에는 UI와 캐릭터가 숨겨집니다. 종료는 Esc · R 또는 화면을 빠르게 두 번 탭하세요.</p>
     </aside>
     <div class="cliff-stick" data-stick hidden aria-label="화면 조이스틱"><span></span></div>
+    <button type="button" class="cliff-bench-action" data-bench-seat hidden>의자에 앉기</button>
     <nav class="cliff-actions" aria-label="여행자 행동">
       ${Object.entries(actionNames).map(([action, label]) => `<button class="cliff-icon cliff-action" type="button" data-action="${action}"${action === 'sit' || action === 'lie' ? ' aria-pressed="false"' : ''}>${icon(action)}<span>${label}</span></button>`).join('')}
     </nav>`;
@@ -492,6 +495,12 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const stickToggle = ui.querySelector('[data-stick-toggle]');
   const companionList = ui.querySelector('[data-companions]');
   const actionButtons = [...ui.querySelectorAll('[data-action]')];
+  const filmButton = ui.querySelector('[data-action="film"]');
+  filmButton.hidden = mapId !== 'campus';
+  filmButton.title = '풍경 동영상 촬영 · 종료는 Esc 또는 빠르게 두 번 탭';
+  ui.querySelector('[data-film-help]').hidden = mapId !== 'campus';
+  const benchButton = ui.querySelector('[data-bench-seat]');
+  const sitButtonLabel = ui.querySelector('[data-action="sit"] span');
   const local = createTraveler(THREE, 0xc99d6e);
   local.group.scale.setScalar(view.scale ?? 1.13);
   scene.add(local.group);
@@ -510,6 +519,11 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   let seatedView = 0;
   let reclinedView = 0;
   let destination = null;
+  let seatedBench = null;
+  let recording = false;
+  let filmRecorder = null;
+  let filmStream = null;
+  let lastFilmTap = null;
   let transportStatus = 'connecting';
   let lastList = '';
   let hideHint;
@@ -539,7 +553,45 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   };
   hideHint = setTimeout(() => hint.classList.add('cliff-hint-faded'), 12500);
 
+
+  function nearestBench() {
+    if(mapId !== 'campus' || !terrain.benchSeats) return null;
+    let nearest=null, best=2.7;
+    for (const seat of terrain.benchSeats) {
+      const distance=Math.hypot(x-seat.x,z-seat.z);
+      if (distance<best) {nearest=seat;best=distance;}
+    }
+    return nearest;
+  }
+  function leaveBench() {
+    if(!seatedBench) return;
+    const seat=seatedBench;
+    seatedBench=null;
+    // Keep the avatar outside the chair collision volume on standing.
+    const positions=[
+      {x:seat.exitX,z:seat.exitZ},
+      {x:seat.x-Math.sin(seat.yaw)*2.25,z:seat.z-Math.cos(seat.yaw)*2.25},
+      {x:seat.x-Math.sin(seat.yaw)*1.8+Math.cos(seat.yaw)*1.1,z:seat.z-Math.cos(seat.yaw)*1.8-Math.sin(seat.yaw)*1.1},
+      {x:seat.x-Math.sin(seat.yaw)*1.8-Math.cos(seat.yaw)*1.1,z:seat.z-Math.cos(seat.yaw)*1.8+Math.sin(seat.yaw)*1.1}
+    ];
+    const exit=positions.find(point=>terrain.canWalk(point.x,point.z));
+    if(exit){x=exit.x;z=exit.z;}
+  }
+  function sitAtBench(seat) {
+    if(!seat) return;
+    destination=null;
+    guidedStop=null;
+    keys.clear();
+    joystick.x=joystick.y=0;
+    seatedBench=seat;
+    x=seat.x; z=seat.z;
+    bodyYaw=yaw=seat.yaw;
+    setPose('sit');
+    benchButton.hidden=true;
+    presence.sendNow();
+  }
   function setPose(value) {
+    if (value !== 'sit' && seatedBench) leaveBench();
     if (pose === value) return;
     pose = value;
     for (const button of actionButtons) {
@@ -575,9 +627,14 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   }
   function doAction(action) {
     if (action === 'photo') { savePhoto(); return; }
+    if (action === 'film') { startFilming(); return; }
     if (action === 'sit' || action === 'lie') {
       destination = null;
       guidedStop = null;
+      if (action === 'sit' && pose !== 'sit' && nearestBench()) {
+        sitAtBench(nearestBench());
+        return;
+      }
       setPose(pose === action ? 'idle' : action);
     } else if (action === 'greet') {
       if (pose === 'lie') setPose('sit');
@@ -591,18 +648,113 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     presence.sendNow();
   }
   for (const button of actionButtons) button.addEventListener('click', () => doAction(button.dataset.action));
+  benchButton.addEventListener('click',()=>sitAtBench(nearestBench()));
   gatherButton.addEventListener('click', () => {
     if (!['campus','beach'].includes(mapId)) return;
     // Rejoin the visible central lawn without changing worlds or the room.
     const spots = terrain.spawnPoints ?? [{x:0,z:5}];
     const spot = spots[Math.floor(Math.random()*spots.length)];
+    setPose('idle');
     x = spot.x; z = spot.z; yaw = 0; bodyYaw = 0;
     destination = null; guidedStop = null;
-    setPose('idle');
     presence.sendNow();
     fadeHint();
   });
 
+
+  // Record the canvas only. DOM overlays cannot appear in the saved video.
+  // During filming the live UI and all travelers are hidden too.
+  function setFilmingVisuals(active){
+    recording=active;
+    document.body.classList.toggle('gongang-filming',active);
+    local.group.visible=!active;
+    for (const traveler of remote.values()) traveler.model.group.visible=!active;
+    marker.visible=!active&&Boolean(destination);
+    if(active){
+      panel.hidden=true;
+      settings.setAttribute('aria-expanded','false');
+      keys.clear();
+      joystick.id=null;
+      joystick.x=joystick.y=0;
+      stickThumb.style.transform='';
+    }
+  }
+  function stopFilming(){
+    if(!recording)return;
+    setFilmingVisuals(false);
+    lastFilmTap=null;
+    try {
+      if(filmRecorder?.state==='recording') filmRecorder.stop();
+    } catch(error) {
+      console.warn('동영상 촬영 종료 실패',error);
+      filmStream?.getTracks().forEach(track=>track.stop());
+      filmStream=null;
+    }
+  }
+  function startFilming(){
+    if(recording) {stopFilming();return;}
+    if(mapId!=='campus') return;
+    if(!element.captureStream || typeof MediaRecorder==='undefined'){
+      statusText.textContent='이 브라우저에서는 영상 촬영을 지원하지 않아요.';
+      return;
+    }
+    try{
+      const stream=element.captureStream(30);
+      const formats=[
+        'video/mp4;codecs=avc1.42E01E',
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm'
+      ];
+      const mime=formats.find(type=>MediaRecorder.isTypeSupported?.(type));
+      const recorder=new MediaRecorder(stream,{
+        ...(mime?{mimeType:mime}:{}),
+        videoBitsPerSecond:5000000
+      });
+      const chunks=[];
+      recorder.addEventListener('dataavailable',event=>{
+        if(event.data?.size) chunks.push(event.data);
+      });
+      recorder.addEventListener('stop',()=>{
+        stream.getTracks().forEach(track=>track.stop());
+        filmStream=null;
+        filmRecorder=null;
+        if(!chunks.length){
+          statusText.textContent='촬영 영상이 비어 있어 저장하지 못했어요.';
+          return;
+        }
+        const type=recorder.mimeType || mime || 'video/webm';
+        const ext=type.includes('mp4')?'mp4':'webm';
+        const video=new Blob(chunks,{type});
+        const url=URL.createObjectURL(video);
+        const a=document.createElement('a');
+        a.download='gongang-campus-film-'+new Date().toISOString().replace(/[:.]/g,'-')+'.'+ext;
+        a.href=url;
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),60000);
+      },{once:true});
+      recorder.addEventListener('error',event=>{
+        console.warn('동영상 촬영 오류',event.error);
+        setFilmingVisuals(false);
+        stream.getTracks().forEach(track=>track.stop());
+        statusText.textContent='영상 촬영 중 오류가 발생했어요.';
+      });
+      filmRecorder=recorder;
+      filmStream=stream;
+      // Hide the UI before the first recorded frame.
+      setFilmingVisuals(true);
+      recorder.start(500);
+    }catch(error){
+      setFilmingVisuals(false);
+      filmStream?.getTracks().forEach(track=>track.stop());
+      filmStream=null;
+      filmRecorder=null;
+      console.warn('영상 촬영 시작 실패',error);
+      statusText.textContent='영상 촬영을 시작하지 못했어요. 브라우저 권한을 확인해 주세요.';
+    }
+  }
   function setPanel(open) {
     panel.hidden = !open;
     settings.setAttribute('aria-expanded', String(open));
@@ -621,6 +773,11 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const movementKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight']);
   const actionKeys = { Digit1: 'sit', Digit2: 'lie', KeyE: 'greet', KeyF: 'signal' };
   window.addEventListener('keydown', (event) => {
+    if(recording && (event.code==='Escape' || event.code==='KeyR')) {
+      event.preventDefault();
+      stopFilming();
+      return;
+    }
     if (event.code === 'Escape' && !panel.hidden) setPanel(false);
     if (event.ctrlKey || event.metaKey || event.altKey || !panel.hidden || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
     if (movementKeys.has(event.code)) {
@@ -679,7 +836,17 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     pointer.id = null;
     if (pointer.total > 9 || event.button !== 0) return;
     const point = pointOnTerrain(event);
+    if(recording){
+      const now=performance.now();
+      if(lastFilmTap && now-lastFilmTap.time<380
+         && Math.hypot(event.clientX-lastFilmTap.x,event.clientY-lastFilmTap.y)<65){
+        stopFilming();
+        return;
+      }
+      lastFilmTap={time:now,x:event.clientX,y:event.clientY};
+    }
     if (point && terrain.canWalk(point.x, point.z)) {
+      if(seatedBench) setPose('idle');
       destination = { x: point.x, z: point.z };
       guidedStop = null;
       fadeHint();
@@ -757,7 +924,9 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   }
 
   function updatePlayers(received, blocked) {
-    const players = received.filter((player) => terrain.canWalk(player.x, player.z));
+    // Seated travelers are permitted inside the bench collision shape.
+    const players = received.filter((player) => terrain.canWalk(player.x, player.z)
+      || (player.pose === 'sit' && terrain.isSeatPosition?.(player.x,player.z)));
     const visible = new Set(players.filter((player) => !blocked.has(player.id)).map((player) => player.id));
     for (const [id, traveler] of remote) if (!visible.has(id)) removeRemote(id, traveler);
     for (const player of players) {
@@ -766,8 +935,10 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       if (!traveler) {
         const model = createTraveler(THREE, tint(player.id));
         model.group.scale.copy(local.group.scale);
-        model.group.position.set(player.x, terrain.heightAt(player.x, player.z), player.z);
+        model.group.position.set(player.x, terrain.heightAt(player.x, player.z)
+          + (player.pose === 'sit' ? (terrain.seatHeightAt?.(player.x,player.z)??0) : 0), player.z);
         model.group.rotation.y = player.yaw;
+        model.group.visible=!recording;
         scene.add(model.group);
         traveler = { model, target: player, gesture: player.gesture, signal: player.signal };
         remote.set(player.id, traveler);
@@ -844,6 +1015,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     const speed = (view.speed ?? 3.4) * dt;
     const manualLength = Math.hypot(dx, dz);
     if (manualLength > 0.08) {
+      if(seatedBench) setPose('idle');
       const divisor = Math.max(1, manualLength);
       dx *= speed / divisor;
       dz *= speed / divisor;
@@ -901,13 +1073,16 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       setPose('idle');
     }
 
-    const floor = terrain.heightAt(x, z);
+    const floor = terrain.heightAt(x, z) + (seatedBench?.height ?? 0);
+    const nearSeat = seatedBench ? null : nearestBench();
+    benchButton.hidden = !nearSeat || recording;
+    sitButtonLabel.textContent = seatedBench ? '일어나기' : nearSeat ? '의자에 앉기' : '앉기';
     updateJourney(terrain.progressZ?.(x,z) ?? z);
     local.group.position.set(x, floor, z);
     local.group.rotation.y = bodyYaw;
     local.animate(pose, time, dt);
 
-    marker.visible = Boolean(destination);
+    marker.visible = !recording && Boolean(destination);
     if (destination) {
       marker.position.set(destination.x, terrain.heightAt(destination.x, destination.z) + 0.035, destination.z);
       marker.scale.setScalar(1 + Math.sin(time * 4) * 0.12);
@@ -933,7 +1108,8 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
       const group = model.group;
       group.position.x += (target.x - group.position.x) * interpolation;
       group.position.z += (target.z - group.position.z) * interpolation;
-      group.position.y = terrain.heightAt(group.position.x, group.position.z);
+      group.position.y = terrain.heightAt(group.position.x, group.position.z)
+        + (target.pose === 'sit' ? (terrain.seatHeightAt?.(group.position.x,group.position.z)??0) : 0);
       const turn = target.yaw - group.rotation.y;
       group.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * interpolation;
       model.animate(target.pose, time, Math.min(dt * 1.45, 0.075));
