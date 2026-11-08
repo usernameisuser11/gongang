@@ -336,7 +336,9 @@ function createPresence({ getState, onPlayers, onStatus, onReset, mapId = 'cliff
     socket = connection;
     connection.addEventListener('message', (event) => {
       if (socket !== connection) return;
-      const message = JSON.parse(event.data);
+      let message;
+      try { message = JSON.parse(event.data); } catch { return; }
+      if (!message || typeof message !== 'object') return;
       if (message.type === 'welcome') {
         self = message.id;
         online = true;
@@ -347,7 +349,7 @@ function createPresence({ getState, onPlayers, onStatus, onReset, mapId = 'cliff
         pendingAction = null;
         onStatus('online');
         send();
-      } else if (message.type === 'snapshot') {
+      } else if (message.type === 'snapshot' && Array.isArray(message.players)) {
         latest = message.players.filter((player) => player.id !== self);
         onPlayers(latest, blocked);
       } else if (message.type === 'full') {
@@ -1116,8 +1118,12 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     const interpolation = 1 - Math.exp(-dt * 18);
     for (const { model, target } of remote.values()) {
       const group = model.group;
-      group.position.x += (target.x - group.position.x) * interpolation;
-      group.position.z += (target.z - group.position.z) * interpolation;
+      // Smooth ordinary movement, but never slide across a whole map when a
+      // traveler uses "gather" or another long-distance repositioning action.
+      const distance = Math.hypot(target.x - group.position.x, target.z - group.position.z);
+      const blend = distance > 12 ? 1 : interpolation;
+      group.position.x += (target.x - group.position.x) * blend;
+      group.position.z += (target.z - group.position.z) * blend;
       group.position.y = terrain.heightAt(group.position.x, group.position.z)
         + (target.pose === 'sit' ? (terrain.seatHeightAt?.(group.position.x,group.position.z)??0) : 0);
       const turn = target.yaw - group.rotation.y;
