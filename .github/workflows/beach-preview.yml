@@ -1,0 +1,31 @@
+name: Beach WebGL preview
+
+on:
+  pull_request:
+    paths:
+      - 'public/beach*.js'
+      - 'public/scene.js'
+      - 'scripts/beach-visual-smoke.mjs'
+      - '.github/workflows/beach-preview.yml'
+  workflow_dispatch:
+
+jobs:
+  render-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/beach-visual-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: beach-sunset-night-previews
+          path: artifacts/beach-preview/
+          if-no-files-found: ignore
