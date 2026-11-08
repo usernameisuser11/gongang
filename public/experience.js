@@ -234,7 +234,8 @@ function buildInterface(root) {
       <h1>공강</h1>
       <p class="cliff-tagline">수업과 수업 사이, 상명인을 위한 작은 쉼터</p>
       <p class="cliff-status" data-status role="status">잠시 쉬어가는 중</p>
-      <label class="cliff-world">풍경 <select data-world aria-label="풍경 선택"><option value="cliff">바람의 절벽</option><option value="hill">상명의 언덕길</option></select></label>
+      <label class="cliff-world">풍경 <select data-world aria-label="풍경 선택"><option value="cliff">바람의 절벽</option><option value="hill">상명의 언덕길</option><option value="campus">사범관 · 학정관 잔디밭</option></select></label>
+      <button class="cliff-gather" type="button" data-gather hidden>✦ 잔디밭에 함께 모이기</button>
       <section class="cliff-journey" data-journey hidden aria-label="등굣길 진행 상황">
         <button class="cliff-journey-toggle" type="button" data-journey-toggle aria-expanded="false" aria-controls="cliff-journey-details" aria-label="등굣길 진행 상황 펼치기">
           <span class="cliff-journey-label" data-journey-label>등굣길 시작</span>
@@ -405,6 +406,10 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const element = renderer.domElement;
   element.style.touchAction = 'none';
   const ui = buildInterface(root);
+  ui.classList.toggle('cliff-campus', mapId === 'campus');
+  if (mapId === 'campus') ui.querySelector('.cliff-tagline').textContent = '사범대학관과 학술정보관 사이, 함께 머무는 잔디밭';
+  const gatherButton = ui.querySelector('[data-gather]');
+  gatherButton.hidden = mapId !== 'campus';
   const panel = ui.querySelector('[data-panel]');
   const settings = ui.querySelector('[data-settings]');
   const journey = ui.querySelector('[data-journey]');
@@ -555,6 +560,17 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     presence.sendNow();
   }
   for (const button of actionButtons) button.addEventListener('click', () => doAction(button.dataset.action));
+  gatherButton.addEventListener('click', () => {
+    if (mapId !== 'campus') return;
+    // Rejoin the visible central lawn without changing worlds or the room.
+    const spots = terrain.spawnPoints ?? [{x:0,z:5}];
+    const spot = spots[Math.floor(Math.random()*spots.length)];
+    x = spot.x; z = spot.z; yaw = 0; bodyYaw = 0;
+    destination = null; guidedStop = null;
+    setPose('idle');
+    presence.sendNow();
+    fadeHint();
+  });
 
   function setPanel(open) {
     panel.hidden = !open;
@@ -696,7 +712,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const onlineText = ui.querySelector('[data-online]');
   const statusText = ui.querySelector('[data-status]');
   function refreshStatus() {
-    const worldName = mapId === 'hill' ? '상명의 언덕길' : '해 질 녘';
+    const worldName = mapId === 'campus' ? '사범관 · 학정관 잔디밭' : mapId === 'hill' ? '상명의 언덕길' : '해 질 녘';
     statusText.textContent = transportStatus === 'online' && remote.size
       ? `${worldName} · ${remote.size}명과 함께`
       : `${worldName} · ${statusCopy[transportStatus][0]}`;
