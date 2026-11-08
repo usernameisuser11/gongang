@@ -557,3 +557,27 @@ body.gongang-filming .beach-timeline {
   opacity:0!important;
   pointer-events:none!important;
 }
+
+/* On narrow phones keep the existing movement stick clear of the actions.
+   The additional film action sits in its own small row. */
+@media(max-width:620px){
+  .cliff-campus .cliff-actions [data-action="film"]{
+    position:absolute;
+    right:0;
+    bottom:calc(100% + 7px);
+  }
+  .cliff-campus .cliff-bench-action{
+    right:calc(max(13px,env(safe-area-inset-right)) + 61px);
+    bottom:calc(max(17px,env(safe-area-inset-bottom)) + 58px);
+  }
+  .cliff-campus .cliff-stick:not([hidden]){
+    bottom:calc(max(var(--cliff-inset),env(safe-area-inset-bottom)) + 67px);
+  }
+}
+@media(max-width:385px){
+  .cliff-campus .cliff-actions{gap:3px;}
+  .cliff-campus .cliff-actions .cliff-action:not([data-action="film"]){
+    min-width:39px;
+    padding:3px;
+  }
+}
