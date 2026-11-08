@@ -4,8 +4,8 @@ import { lerp, smooth } from './nature.js';
 const colors = ['zenith', 'middle', 'horizon', 'cloud', 'water', 'sunColor', 'skyColor', 'groundColor', 'fogColor'];
 const levels = ['sunStrength', 'hemiStrength', 'exposure'];
 const twilight = [
-  [0, ['#7799c4', '#d4b6b1', '#f4bc86', '#d79c8d', '#536f88', '#ffd19b', '#d1defa', '#c39872', '#cdad9a'], [2.45, 1.52, 1.10]],
-  [.32, ['#736aa7', '#cd8baa', '#f3a598', '#cc83a0', '#645f83', '#ffb698', '#b6b9eb', '#ac747e', '#b58d9e'], [1.20, 1.31, 1.07]],
+  [0, ['#568bb9', '#a6bed2', '#f4bd8d', '#cbb5a9', '#536f88', '#ffd19b', '#d1defa', '#c39872', '#cdad9a'], [2.45, 1.52, 1.10]],
+  [.32, ['#647bb1', '#b6a9c8', '#f3a598', '#b4a3be', '#645f83', '#ffb698', '#b6b9eb', '#ac747e', '#b58d9e'], [1.20, 1.31, 1.07]],
   [.67, ['#314581', '#645c94', '#a486a8', '#7e6b9d', '#354967', '#eca1a3', '#8da8ec', '#795f83', '#626c90'], [0, 1.05, 1.07]],
   [1, ['#122348', '#25375e', '#4a567f', '#343e64', '#253d59', '#bb9bcf', '#88a2dd', '#5a6081', '#384664'], [0, .70, 1.10]],
 ].map(([phase, palette, intensity]) => ({
