@@ -39,8 +39,8 @@ export function makeBeachSky(scene, time, phase, light) {
         float sunDot = max(0., dot(ray, sun));
         // Wide, layered atmospheric gradient: the horizon is warmer and
         // softer while the upper sky keeps its cool blue depth.
-        vec3 color = mix(horizon, middle, smoothstep(.006, .32, elevation));
-        color = mix(color, zenith, smoothstep(.18, .79, elevation));
+        vec3 color = mix(horizon, middle, smoothstep(.004, .19, elevation));
+        color = mix(color, zenith, smoothstep(.10, .42, elevation));
         float solarAzimuth = max(0., dot(normalize(ray.xz), normalize(sun.xz)));
         float wideGlow = pow(solarAzimuth, 7.) * exp(-elevation * 8.5) * sunVisible;
         color += sunColor * (.065 * wideGlow + .025 * exp(-elevation * 18.) * sunVisible);
@@ -66,12 +66,25 @@ export function makeBeachSky(scene, time, phase, light) {
         float lowBank = smoothstep(.56, .75, bank)
           * smoothstep(.008, .033, elevation)
           * (1. - smoothstep(.09, .18, elevation)) * .28;
-        float cloudCover = clamp(
-          cloudWindow * (firstReady * highDeck.a + secondReady * lowDeck.a * .46)
-            + lowBank, 0., .84);
+        // Broken billowing cloud masses make the sky legible even where the
+        // original high-altitude photo sheets have very faint transparency.
+        vec2 cloudFieldUV = vec2(azimuth * 6.7 + clock * .00015,
+          elevation * 7.6 + 1.9);
+        float cloudBaseNoise = n2(cloudFieldUV);
+        float cloudDetailNoise = n2(cloudFieldUV * 2.33 + vec2(8.6, -3.1));
+        float cloudField = cloudBaseNoise * .69 + cloudDetailNoise * .31;
+        float billows = smoothstep(.47, .64, cloudField)
+          * smoothstep(.018, .09, elevation)
+          * (1. - smoothstep(.43, .69, elevation));
+        float proceduralCover = billows * .57;
+        float cloudCover = clamp(max(proceduralCover,
+          cloudWindow * (firstReady * highDeck.a * .9
+          + secondReady * lowDeck.a * .52)) + lowBank, 0., .86);
         float sunsetTint = pow(solarAzimuth, 5.) * sunVisible;
-        vec3 cloudLight = mix(cloud * (.54 + textureLight * 1.04),
-          sunColor * .64 + cloud * .37, .18 + .37 * sunsetTint);
+        vec3 shadowCloud = cloud * (.48 + textureLight * .89);
+        vec3 sunlitCloud = mix(shadowCloud,
+          vec3(.87, .82, .75) + sunColor * .09, .48 + .20 * sunsetTint);
+        vec3 cloudLight = mix(shadowCloud, sunlitCloud, sunVisible);
         color = mix(color, cloudLight, cloudCover);
         // Low-altitude haze smooths the hard divide between water and sky.
         color = mix(color, horizon, exp(-elevation * 34.) * .17);
