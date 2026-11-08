@@ -410,3 +410,46 @@
   }
   .cliff-journey-track {margin: 0 9px 5px;}
 }
+
+
+/* 3D communal spaces: compact controls leave the landscape unobscured. */
+.cliff-campus .cliff-title,
+.cliff-beach .cliff-title { max-width: min(340px, calc(100% - 110px)); }
+.cliff-campus .cliff-title h1,
+.cliff-beach .cliff-title h1 { font-size: clamp(25px, 2.85vw, 38px); }
+.cliff-campus .cliff-tagline,
+.cliff-beach .cliff-tagline { font-size: clamp(10px, 1.03vw, 12px); margin-top: 5px; }
+.cliff-campus .cliff-world,
+.cliff-beach .cliff-world { margin-top: 7px; padding: 4px 8px; }
+.cliff-gather {
+  display:block;
+  margin-top:8px;
+  padding:8px 12px;
+  pointer-events:auto;
+  font:600 11px/1.4 "Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  color:#fff5e2;
+  background:rgba(36,50,48,.72);
+  border:1px solid rgba(247,229,192,.42);
+  border-radius:22px;
+  backdrop-filter:blur(8px);
+  cursor:pointer;
+  width:max-content;
+  max-width:100%;
+}
+.cliff-gather[hidden]{ display:none!important; }
+.cliff-gather:hover,
+.cliff-gather:focus-visible {
+  background:rgba(62,78,65,.87);
+  outline-color:#f5d3a8;
+}
+@media(max-width:620px){
+  .cliff-campus .cliff-title,
+  .cliff-beach .cliff-title { top:max(11px,env(safe-area-inset-top));left:13px;max-width:calc(100% - 85px); }
+  .cliff-campus .cliff-title h1,
+  .cliff-beach .cliff-title h1 { font-size:25px; }
+  .cliff-campus .cliff-tagline,
+  .cliff-beach .cliff-tagline { max-width:230px;font-size:10px; }
+  .cliff-campus .cliff-world,
+  .cliff-beach .cliff-world { margin-top:6px; }
+  .cliff-gather { margin-top:5px;padding:7px 10px;font-size:10px; }
+}
