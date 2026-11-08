@@ -13,6 +13,16 @@ const benches = [
   [-12.7,5.4,Math.PI/2], [13.2,4.0,-Math.PI/2],
   [-13.2,-18.0,Math.PI/2]
 ];
+// Seat location matches the actual planks and backrest, not the collision box.
+// The exit point is on the open side of each bench so players can walk away.
+const benchSeats = benches.map(([x,z,yaw],id)=>({
+  id, x:x-Math.sin(yaw)*.12, z:z-Math.cos(yaw)*.12, yaw,
+  height:.43,
+  exitX:x-Math.sin(yaw)*1.85, exitZ:z-Math.cos(yaw)*1.85
+}));
+function seatAt(x,z) {
+  return benchSeats.find(seat => Math.hypot(x-seat.x,z-seat.z) < .35) ?? null;
+}
 const railRuns = [[-35,-7.6],[7.6,35]];
 // Approximate footprints traced from the aerial image, in court coordinates.
 const education = {x:-22.7,z:-10.2,yaw:.15,halfWidth:5.2,halfLength:18.6};
@@ -727,6 +737,9 @@ export function makeCampus(scene,time,compact=false) {
   ];
   return {
     heightAt,canWalk,spawnPoints,
+    benchSeats,
+    isSeatPosition(x,z){return Boolean(seatAt(x,z));},
+    seatHeightAt(x,z){return seatAt(x,z)?.height ?? 0;},
     pick(raycaster){return raycaster.intersectObject(ground,false)[0]?.point??null;},
     update(elapsed){
       canopies.forEach((canopy,i)=>{
