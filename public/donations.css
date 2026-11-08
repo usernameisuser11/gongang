@@ -122,3 +122,126 @@ a.cliff-donate-method:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .cliff-donate-dock { transition: none; }
 }
+
+/* PC QR transfer dialog. The mobile donation link keeps opening KakaoPay directly. */
+.cliff-ui.cliff-ui-donate-open {
+  z-index: 30; /* above the beach time scrubber */
+}
+.cliff-donate-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+           max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  pointer-events: auto;
+  background: rgba(13, 21, 22, .74);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.cliff-donate-dialog {
+  position: relative;
+  box-sizing: border-box;
+  width: min(365px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 26px 25px 22px;
+  border: 1px solid rgba(255, 237, 202, .32);
+  border-radius: 22px;
+  background: #283a36;
+  color: #f7e9d5;
+  box-shadow: 0 28px 75px rgba(4, 12, 12, .45);
+  text-align: center;
+  font: 400 12px/1.65 "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+}
+.cliff-donate-dialog-eyebrow {
+  color: #e9cba2;
+  font-weight: 650;
+  font-size: 11px;
+}
+.cliff-donate-dialog h2 {
+  margin: 5px 0 9px;
+  font-size: 19px;
+  line-height: 1.35;
+}
+.cliff-donate-dialog p {
+  margin: 0 auto 14px;
+  max-width: 290px;
+  color: #dfd1bd;
+  word-break: keep-all;
+}
+.cliff-donate-dialog strong { color: #fff1d7; }
+.cliff-ui .cliff-donate-dialog-close {
+  position: absolute;
+  right: 11px;
+  top: 9px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #dfd1bd;
+  font-size: 27px;
+  line-height: 1;
+}
+.cliff-ui .cliff-donate-dialog-close:hover { background: rgba(255,255,255,.08); }
+.cliff-donate-qr-frame {
+  display: grid;
+  place-content: center;
+  width: 248px;
+  height: 248px;
+  max-width: 100%;
+  margin: 15px auto;
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+  box-sizing: border-box;
+}
+.cliff-donate-qr-frame img {
+  display: block;
+  width: 224px;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  image-rendering: crisp-edges;
+}
+.cliff-donate-dialog label {
+  display: block;
+  margin-bottom: 7px;
+  text-align: left;
+  font-size: 11px;
+  color: #dfd1bd;
+}
+.cliff-donate-copy-row { display: flex; gap: 7px; }
+.cliff-donate-copy-row input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid rgba(250, 226, 193, .28);
+  border-radius: 8px;
+  padding: 9px;
+  background: #182a28;
+  color: #f1e8dc;
+  font: 400 11px/1.2 ui-monospace, Consolas, monospace;
+}
+.cliff-ui .cliff-donate-copy-row button {
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 231, 190, .43);
+  border-radius: 8px;
+  background: #475448;
+  color: #fff1d8;
+  font-size: 11px;
+  font-weight: 650;
+}
+.cliff-donate-copy-status { min-height: 14px; font-size: 10px; }
+.cliff-donate-dialog small {
+  display: block;
+  font-size: 10px;
+  line-height: 1.55;
+  color: #d2c4af;
+}
+@media (max-height: 620px) {
+  .cliff-donate-dialog { padding-top: 18px; padding-bottom: 15px; }
+  .cliff-donate-qr-frame { width: 186px; height: 186px; padding: 9px; }
+  .cliff-donate-qr-frame img { width: 168px; }
+}
