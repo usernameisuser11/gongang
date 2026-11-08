@@ -36,7 +36,6 @@ const crownMats = [
   mat('#9eae78'),
   mat('#446d59')
 ];
-const grassBladeMat = mat('#8bae65',{vertexColors:true,side:T.DoubleSide,roughness:1});
 
 function heightAt(x,z) {
   const rimX = smooth(15,40,Math.abs(x));
@@ -107,39 +106,41 @@ function lawn(scene) {
   planeShape(scene,roundedShape(27.2,36,3.5),'#c9bda6',.018,-1.0);
   planeShape(scene,roundedShape(21.3,29,3.0),'#82a66b',.037,-1.0);
   planeShape(scene,roundedShape(18.7,26.7,2.4),'#91b376',.040,-1.0);
-  // Fine, irregular lawn color catches the sunlight without a visible tiled texture.
-  const bladeGeo=new T.BufferGeometry();
-  bladeGeo.setAttribute('position',new T.Float32BufferAttribute([
-    -.07,0,0, 0,.19,-.027, .065,0,.02,
-    -.055,0,0, .045,.14,.075, .09,0,0
-  ],3));
-  bladeGeo.computeVertexNormals();
-  const blade=new T.InstancedMesh(bladeGeo,grassBladeMat,2300);
-  const dummy=new T.Object3D(),color=new T.Color();
-  const a=C('#6e9568'),b=C('#b4c581');
-  for(let i=0;i<2300;i++) {
+  // Soft, flush color variations replace the former spike-shaped grass.
+  // Keep the lawn smooth and walkable, with no black triangles or towering blades.
+  const patchGeometry = new T.CircleGeometry(1, 20).rotateX(-Math.PI / 2);
+  const patchMaterial = new T.MeshBasicMaterial({
+    color:'#ffffff', transparent:true, opacity:.12, depthWrite:false,
+    side:T.DoubleSide, polygonOffset:true, polygonOffsetFactor:-1
+  });
+  const patches = new T.InstancedMesh(patchGeometry, patchMaterial, compact?480:740);
+  const dummy = new T.Object3D(), tint = new T.Color();
+  const deep = C('#678e68'), light = C('#c1d09c');
+  for(let i=0;i<patches.count;i++){
     let x=0,z=0;
-    for(let trial=0;trial<14;trial++){
-      x=(seed()-.5)*19.5;z=-1+(seed()-.5)*27;
-      if(Math.pow(x/10.25,8)+Math.pow((z+1)/14,8)<.82) break;
+    for(let attempt=0;attempt<20;attempt++){
+      x=(seed()-.5)*19.8; z=-1+(seed()-.5)*26.8;
+      if(Math.pow(x/10.4,8)+Math.pow((z+1)/14.3,8)<.8)break;
     }
-    dummy.position.set(x,.045,z);
-    dummy.rotation.y=seed()*Math.PI*2;
-    const size=.56+seed()*.94;
-    dummy.scale.set(size,size*(.53+seed()*.9),size);
-    dummy.updateMatrix();blade.setMatrixAt(i,dummy.matrix);
-    color.copy(a).lerp(b,seed()*.89);
-    blade.setColorAt(i,color);
+    dummy.position.set(x,.048+seed()*.0015,z);
+    dummy.rotation.set(0,seed()*Math.PI*2,0);
+    const size=.32+seed()*1.3;
+    dummy.scale.set(size*(.7+seed()*1.8),1,size*(.35+seed()*.8));
+    dummy.updateMatrix();
+    patches.setMatrixAt(i,dummy.matrix);
+    tint.copy(deep).lerp(light,seed());
+    patches.setColorAt(i,tint);
   }
-  blade.instanceMatrix.needsUpdate=true;
-  blade.computeBoundingSphere();
-  scene.add(blade);
+  patches.instanceMatrix.needsUpdate=true;
+  patches.computeBoundingSphere();
+  patches.renderOrder=2;
+  scene.add(patches);
   // Two understated wood platforms: not a raised artificial stage.
   for(const x of [-11.9,11.9]) {
     box(scene,wood,x,.065,-2,2.35,.115,26);
     for(let k=0;k<19;k++) box(scene,woodLight,x,.132,-14.15+k*1.36,2.24,.018,.045);
   }
-  return blade;
+  return patches;
 }
 function teacherBuilding(scene) {
   const g=new T.Group();
