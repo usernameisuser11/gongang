@@ -86,7 +86,8 @@ function sea(scene,time){
       }
     `
   }));
-  sea.position.y=0;
+  // Keep the ocean seaward; rotating inland must not reveal water behind the dunes.
+  sea.position.set(0,0,-700);
   scene.add(sea);
 }
 function foam(scene,time){
