@@ -78,7 +78,7 @@ export function makeBeachSky(scene,time,phase) {
   g.setAttribute('position',new T.Float32BufferAttribute(position,3));
   g.setAttribute('brightness',new T.Float32BufferAttribute(brightness,1));
   const stars=new T.Points(g,new T.ShaderMaterial({
-    transparent:true,depthWrite:false,depthTest:false,
+    transparent:true,depthWrite:false,depthTest:true,
     uniforms:{phase,clock:time},
     vertexShader:String.raw`
       attribute float brightness;
