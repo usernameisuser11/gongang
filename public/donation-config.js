@@ -4,5 +4,5 @@
 // These values are public: anyone visiting the site can inspect them.
 export const donationLinks = Object.freeze({
   toss: '',
-  kakaopay: '', // Link removed after reported 404; add a confirmed working recipient link.
+  kakaopay: 'https://qr.kakaopay.com/FHF9YD25l', // Confirmed opening in Safari by owner.
 });
