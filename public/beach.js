@@ -118,26 +118,97 @@ function coastalPines(scene, random) {
   timber.computeBoundingSphere();needles.computeBoundingSphere();
   scene.add(timber,needles);
 }
-function logs(scene){
-  const timber=material('#9b8069'),ends=material('#d0b18d');
-  // Low driftwood seating beside the central sand, leaving a gathering circle open.
-  for(const [x,z,a] of [[-13,7,.23],[12.5,6,-.35],[-17,22,.66],[18,20,-.65]]){
-    const g=new T.Group();g.position.set(x,heightAt(x,z)+.23,z);g.rotation.y=a;scene.add(g);
-    const body=new T.Mesh(new T.CylinderGeometry(.26,.31,3.9,9),timber);
-    body.rotation.z=Math.PI/2;g.add(body);
-    for(const sign of [-1,1]){
-      const end=new T.Mesh(new T.CylinderGeometry(.272,.272,.045,12),ends);
-      end.rotation.z=Math.PI/2;end.position.x=sign*1.95;g.add(end);
+// A single quiet holiday nook at the right edge of the beach. The centre stays
+// empty so visitors can still meet, walk and photograph the uninterrupted sea.
+function beachRetreat(scene){
+  const retreat=new T.Group();
+  retreat.position.set(34,heightAt(34,20),20);
+  scene.add(retreat);
+  const timber=material('#ac9175',{roughness:.93});
+  const frame=material('#d6c2a2',{roughness:.9});
+  const linen=material('#e8e0cc',{roughness:1,side:T.DoubleSide});
+  const shade=new T.MeshStandardMaterial({color:'#ffffff',vertexColors:true,roughness:1,side:T.DoubleSide});
+  const ivory=new T.Color('#f5ecd7'),seafoam=new T.Color('#bdd2ca');
+  const positions=[],colors=[],indices=[];
+  const sections=20;
+  // Four curved fabric bands per panel, slightly scalloped at the hem.
+  const radii=[.08,.5,1.12,1.65,2.04];
+  const rises=[3.12,3.10,2.98,2.77,2.46];
+  for(let panel=0;panel<sections;panel++){
+    const start=panel*2*Math.PI/sections;
+    const end=(panel+1)*2*Math.PI/sections;
+    const tone=panel%2===0?ivory:seafoam;
+    const base=positions.length/3;
+    for(let ring=0;ring<radii.length;ring++){
+      const radius=radii[ring];
+      for(const angle of [start,end]){
+        const hem=ring===radii.length-1 ? .055*Math.cos((angle-start)*sections) : 0;
+        positions.push(Math.cos(angle)*radius,rises[ring]+hem,Math.sin(angle)*radius);
+        const light=1-.035*ring;
+        colors.push(tone.r*light,tone.g*light,tone.b*light);
+      }
+      if(ring){
+        const a=base+(ring-1)*2,b=base+ring*2;
+        indices.push(a,b,a+1,a+1,b,b+1);
+      }
     }
   }
+  const canopyGeometry=new T.BufferGeometry();
+  canopyGeometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));
+  canopyGeometry.setAttribute('color',new T.Float32BufferAttribute(colors,3));
+  canopyGeometry.setIndex(indices);
+  canopyGeometry.computeVertexNormals();
+  const cloth=new T.Mesh(canopyGeometry,shade);
+  cloth.castShadow=true;
+  cloth.receiveShadow=true;
+  retreat.add(cloth);
+
+  const shaft=new T.Mesh(new T.CylinderGeometry(.065,.085,3.06,10),frame);
+  shaft.position.y=1.58;shaft.castShadow=true;retreat.add(shaft);
+  const cap=new T.Mesh(new T.SphereGeometry(.11,10,8),frame);
+  cap.position.y=3.15;retreat.add(cap);
+  const thinWood=material('#a68e74',{roughness:.95});
+  const up=new T.Vector3(0,1,0);
+  for(let i=0;i<sections;i++){
+    const angle=i*Math.PI*2/sections,from=new T.Vector3(0,3.09,0);
+    const to=new T.Vector3(Math.cos(angle)*2.01,2.45,Math.sin(angle)*2.01);
+    const offset=to.clone().sub(from),rib=new T.Mesh(new T.CylinderGeometry(.014,.014,offset.length(),5),thinWood);
+    rib.position.copy(from).add(to).multiplyScalar(.5);
+    rib.quaternion.setFromUnitVectors(up,offset.normalize());
+    rib.castShadow=false;retreat.add(rib);
+  }
+
+  // Low wooden loungers with linen cushions; no driftwood or oversized props.
+  for(const side of [-1,1]){
+    const chair=new T.Group();
+    chair.position.set(side*1.38,.02,-1.22);
+    chair.rotation.y=side*.12;
+    retreat.add(chair);
+    function part(w,h,d,mat,x,y,z,tilt=0){
+      const mesh=new T.Mesh(new T.BoxGeometry(w,h,d),mat);
+      mesh.position.set(x,y,z);mesh.rotation.x=tilt;
+      mesh.castShadow=true;mesh.receiveShadow=true;chair.add(mesh);
+      return mesh;
+    }
+    for(const x of [-.48,.48]){
+      part(.085,.12,1.77,timber,x,.43,-.35);
+      for(const z of [-1.02,.42])part(.085,.42,.09,timber,x,.23,z);
+    }
+    part(.94,.085,1.41,linen,0,.47,-.48);
+    part(1.02,.085,.90,linen,0,.76,.52,-.86);
+    part(.98,.09,.15,frame,0,.91,.81,-.86);
+    part(.91,.035,.19,frame,0,.50,-1.22);
+  }
+  return retreat;
 }
+
 export function makeBeach(scene,time,compact,light){
   const moisture=makeBeachMoisture(time,compact);
   const ground=sand(scene,compact,moisture,light);
   makeBeachWater(scene,time,compact,heightAt,light);
   for(let i=0;i<rocks.length;i++)boulder(scene,...rocks[i],i);
   coastalPines(scene,rng(26081108));
-  logs(scene);
+  beachRetreat(scene);
   const spawnPoints=[
     {x:-5,z:10},{x:-2.2,z:12},{x:1,z:10},{x:4,z:12},
     {x:-7,z:17},{x:7,z:17},{x:-3,z:20},{x:3,z:20}
