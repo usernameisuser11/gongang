@@ -165,15 +165,37 @@ function boulder(scene,x,z,r,i){
   stone.rotation.y=i*2.08;add(stone,scene,x,heightAt(x,z)+r*.20,z);
 }
 function pine(scene,x,z,h,index){
-  const trunk=new T.Mesh(new T.CylinderGeometry(.14,.32,h,8),material('#736254'));
-  add(trunk,scene,x,heightAt(x,z)+h*.5,z);
-  const greens=['#667c5c','#789169','#4d715e'].map(c=>material(c,{flatShading:true}));
-  for(let k=0;k<5;k++){
-    const layerY=h*(.48+k*.095),radius=h*(.36-k*.035);
-    const layer=new T.Mesh(new T.ConeGeometry(radius,h*.33,9),greens[(index+k)%3]);
-    layer.rotation.y=k*1.32+index*.44;
-    add(layer,scene,x,heightAt(x,z)+layerY,z);
+  // Wind-shaped coastal pine, with open branching and uneven needle clusters.
+  const group=new T.Group();
+  group.position.set(x,heightAt(x,z),z);
+  group.rotation.y=index*.37;
+  scene.add(group);
+  const bark=material('#6e5c50');
+  const timber=new T.Mesh(new T.CylinderGeometry(.12,.29,h*.84,9,5),bark);
+  timber.position.y=h*.42;timber.rotation.z=(index%2?.07:-.09);
+  group.add(timber);
+  const greens=['#526e5c','#6c8868','#809473','#425e50'].map(c=>material(c));
+  for(let i=0;i<10;i++){
+    const angle=i*2.39996+index*.51,spread=.7+Math.sqrt(i/10)*1.45;
+    const bx=Math.cos(angle)*h*.18*spread,bz=Math.sin(angle)*h*.13*spread;
+    const by=h*(.49+(i%5)*.066);
+    const branch=new T.Mesh(new T.CylinderGeometry(.026,.074,h*.33,7),bark);
+    branch.position.set(bx*.45,by-.07,bz*.48);
+    branch.rotation.z=Math.cos(angle)*.72;
+    branch.rotation.x=-Math.sin(angle)*.69;
+    group.add(branch);
+    for(let j=0;j<2;j++){
+      const cloud=new T.Mesh(new T.SphereGeometry(1,10,7),greens[(i+j+index)%greens.length]);
+      cloud.position.set(bx+(j-.5)*h*.13,by+(j-.5)*h*.095,bz);
+      cloud.rotation.set(.12*i,.51*i,.21*j);
+      cloud.scale.set(h*(.21+random()*.075),h*(.10+random()*.055),h*(.19+random()*.08));
+      group.add(cloud);
+    }
   }
+  const crown=new T.Mesh(new T.SphereGeometry(1,12,8),greens[index%greens.length]);
+  crown.position.y=h*.86;
+  crown.scale.set(h*.26,h*.15,h*.23);
+  group.add(crown);
 }
 function logs(scene){
   const timber=material('#9b8069'),ends=material('#d0b18d');
