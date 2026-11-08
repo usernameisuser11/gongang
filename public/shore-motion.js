@@ -26,7 +26,7 @@ export function wetReachAt(x,t){
   return reach;
 }
 // shaderNoise must be included in the enclosing fragment shader before this block.
-export const shorelineGLSL = String.raw\`
+export const shorelineGLSL = String.raw`
   float shCoast(float x) {
     return -17.8+1.35*sin(x*.086+.4)+.68*sin(x*.23-1.8)+.22*sin(x*.53);
   }
@@ -47,4 +47,4 @@ export const shorelineGLSL = String.raw\`
   float shLine(vec2 p,float t) {
     return .3+5.4*shSwash(p,t);
   }
-\`;
+`;
