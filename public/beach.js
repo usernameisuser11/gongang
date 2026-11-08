@@ -1,11 +1,11 @@
 import * as T from 'three';
 import { rng, fbm, smooth, shaderNoise } from './nature.js';
 import { sunDirection } from './atmosphere.js';
+import { coast,runupAt,wetReachAt,shorelineGLSL } from './shore-motion.js';
 
 // An open, walkable sandy shore where up to eight travelers can gather.
 // +Z is inland; the sea stretches toward -Z.
 const random=rng(26081108);
-const coast=x=>-17.8+1.35*Math.sin(x*.086+.4)+.68*Math.sin(x*.23-1.8)+.22*Math.sin(x*.53);
 function heightAt(x,z){
   const d=z-coast(x);
   const slope=Math.max(0,d);
@@ -23,13 +23,15 @@ function canWalk(x,z){
 }
 function material(color,other={}){return new T.MeshStandardMaterial({color,roughness:.94,...other});}
 function add(mesh,scene,x=0,y=0,z=0){mesh.position.set(x,y,z);scene.add(mesh);return mesh;}
-function sand(scene){
-  const nx=217,nz=134,p=[],color=[],idx=[];
-  const wet=new T.Color('#a78e70'),gold=new T.Color('#d4be8f'),dry=new T.Color('#f0d4a2'),edge=new T.Color('#bcaa87'),t=new T.Color();
+function sand(scene,time){
+  const nx=217,nz=134,p=[],color=[],idx=[],xs=[];
+  const wet=new T.Color('#a78e70'),gold=new T.Color('#d4be8f');
+  const dry=new T.Color('#f0d4a2'),edge=new T.Color('#bcaa87'),t=new T.Color();
+  for(let i=0;i<nx;i++)xs.push(-96+i*192/(nx-1));
   for(let j=0;j<nz;j++){
     const z=-38+j*103/(nz-1);
     for(let i=0;i<nx;i++){
-      const x=-96+i*192/(nx-1),d=z-coast(x);
+      const x=xs[i],d=z-coast(x);
       const y=heightAt(x,z),n=fbm(x*.075+8,z*.095-2),fine=fbm(x*.53+12,z*.45);
       t.copy(wet).lerp(gold,smooth(.1,5.8,d)).lerp(dry,smooth(4.7,23,d)*.8);
       t.lerp(edge,smooth(37,75,Math.abs(x))*.36);
@@ -44,11 +46,36 @@ function sand(scene){
   g.setIndex(idx);g.computeVertexNormals();
   const beach=new T.Mesh(g,material('#ffffff',{vertexColors:true,side:T.DoubleSide}));
   beach.receiveShadow=true;scene.add(beach);
-  return beach;
+  const base=new Float32Array(color),vertexColor=g.getAttribute('color'),positions=g.getAttribute('position');
+  let lastUpdate=-Infinity;
+  function updateWet(waveTime){
+    if(waveTime-lastUpdate <.22 && waveTime>=lastUpdate) return;
+    lastUpdate=waveTime;
+    // Sample the recent 21 seconds of wave travel once per x-column. The sea
+    // and beach use the same swell clock, but color recovery is not abrupt.
+    const reaches=xs.map(x=>wetReachAt(x,waveTime));
+    const current=xs.map(x=>runupAt(x,waveTime));
+    for(let i=0;i<vertexColor.count;i++){
+      const xIndex=i%nx,d=positions.getZ(i)-coast(xs[xIndex]);
+      const remembered=reaches[xIndex],active=current[xIndex];
+      const damp=smooth(-1.4,.85,remembered-d);
+      const inWater=smooth(-.75,.35,active-d);
+      const wetness=Math.max(damp*.84,inWater)*smooth(11,7,d);
+      const k=i*3;
+      vertexColor.setXYZ(i,
+        base[k]*(1-.20*wetness),
+        base[k+1]*(1-.30*wetness),
+        base[k+2]*(1-.39*wetness));
+    }
+    vertexColor.needsUpdate=true;
+  }
+  updateWet(time.value);
+  return {mesh:beach,updateWet};
 }
-function sea(scene,time){
+function sea(scene,time,phase){
   const sea=new T.Mesh(new T.PlaneGeometry(1400,1400).rotateX(-Math.PI/2),new T.ShaderMaterial({
-    uniforms:{clock:time,sun:{value:sunDirection}},
+    transparent:true,depthWrite:false,side:T.DoubleSide,
+    uniforms:{clock:time,phase,sun:{value:sunDirection}},
     vertexShader:String.raw`
       varying vec3 world;
       void main(){
@@ -58,79 +85,95 @@ function sea(scene,time){
     `,
     fragmentShader:String.raw`
       uniform float clock;
+      uniform float phase;
       uniform vec3 sun;
       varying vec3 world;
       ${shaderNoise}
+      ${shorelineGLSL}
       void main(){
         vec2 p=world.xz;
+        float d=p.y-shCoast(p.x);
+        float runup=shLine(p,clock);
+        float night=smoothstep(.62,.98,phase);
         vec3 eye=normalize(cameraPosition-world);
         float distanceToEye=length(cameraPosition-world);
-        float fresnel=pow(1.-max(.0,dot(eye,vec3(0.,1.,0.))),3.);
         float a=sin(p.x*.45+p.y*.95-clock*.98+2.*n2(p*.061));
         float b=sin(p.x*1.58-p.y*.55+clock*.83);
         float c=sin(p.y*2.43+p.x*.32-clock*1.37);
-        float high=(a*.52+b*.32+c*.16)*.035;
-        float glitter=pow(max(0.,dot(reflect(-sun,normalize(vec3(a*.072,1.,b*.074))),eye)),80.);
-        vec3 deep=vec3(.035,.195,.227);
-        vec3 pale=vec3(.10,.34,.345);
-        vec3 base=mix(deep,pale,fresnel*.44+.13*n2(p*.16));
-        base+=high;
-        float facing=max(0.,dot(normalize(-eye.xz),normalize(sun.xz)));
-        float sunpath=pow(facing,52.);
-        base+=vec3(1.1,.53,.18)*glitter*(.25+.75*n2(p*1.1+clock*.24))*sunpath;
+        float fresnel=pow(1.-max(0.,eye.y),3.);
+        vec3 normal=normalize(vec3(a*.083+b*.035,1.,b*.061+c*.021));
+        vec3 deep=mix(vec3(.035,.195,.227),vec3(.012,.035,.083),night);
+        vec3 teal=mix(vec3(.10,.34,.345),vec3(.035,.095,.157),night);
+        vec3 color=mix(deep,teal,fresnel*.44+.14*n2(p*.16));
+        color+=(a*.014+b*.008+c*.003)*(1.-night*.44);
+        float sunPath=pow(max(0.,dot(normalize(-eye.xz),normalize(sun.xz))),45.);
+        float highlight=pow(max(0.,dot(reflect(-sun,normal),eye)),69.);
+        color+=vec3(.91,.43,.13)*highlight*sunPath*(1.-night)*(.35+.65*n2(p*.90+clock*.14));
+        float moonPath=pow(max(0.,dot(normalize(-eye.xz),normalize(vec2(.38,-.89)))),44.);
+        color+=vec3(.27,.35,.50)*moonPath*night*pow(max(0.,sin(a*2.4+b)),5.)*.19;
+        // Approach the sandy beach as a translucent wash instead of a cut edge.
+        float depth=max(0.,runup-d);
+        color=mix(color,mix(vec3(.19,.31,.30),vec3(.035,.09,.15),night),exp(-depth*.9)*.33);
         float haze=1.-exp(-distanceToEye*.0015);
-        base=mix(base,vec3(.40,.53,.53),haze*.43);
-        gl_FragColor=vec4(base,1.);
+        color=mix(color,mix(vec3(.40,.53,.53),vec3(.045,.08,.13),night),haze*.38);
+        float opacity=smoothstep(-.35,1.20,runup-d);
+        gl_FragColor=vec4(color,opacity);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }
     `
   }));
-  // Keep the ocean seaward; rotating inland must not reveal water behind the dunes.
+  // Ocean covers only the seaward half, never the dunes behind the players.
   sea.position.set(0,0,-700);
+  sea.renderOrder=1;
   scene.add(sea);
 }
-function foam(scene,time){
-  // Geometrically follows the curved shore: no straight painted foam line.
-  const nx=217,nz=23,p=[],idx=[];
+function foam(scene,time,phase){
+  // Foam geometry follows the same coast curve and four-swell clock as the sea.
+  const nx=217,nz=39,p=[],idx=[];
   for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){
     const x=-78+i*156/(nx-1);
-    const d=-.5+j*6.3/(nz-1),z=coast(x)+d;
-    p.push(x,Math.max(0.035,heightAt(x,z)+.042),z);
+    const d=-1.5+j*10/(nz-1),z=coast(x)+d;
+    p.push(x,Math.max(.035,heightAt(x,z)+.046),z);
     if(i<nx-1&&j<nz-1){const a=j*nx+i,b=a+nx;idx.push(a,a+1,b,a+1,b+1,b);}
   }
   const g=new T.BufferGeometry();
-  g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setIndex(idx);g.computeVertexNormals();
+  g.setAttribute('position',new T.Float32BufferAttribute(p,3));
+  g.setIndex(idx);g.computeVertexNormals();
   const m=new T.ShaderMaterial({
     transparent:true,depthWrite:false,side:T.DoubleSide,
-    uniforms:{clock:time},
+    uniforms:{clock:time,phase},
     vertexShader:String.raw`
       varying vec2 p;
       void main(){p=position.xz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}
     `,
     fragmentShader:String.raw`
       uniform float clock;
+      uniform float phase;
       varying vec2 p;
       ${shaderNoise}
-      float coast(float x){
-        return -17.8+1.35*sin(x*.086+.4)+.68*sin(x*.23-1.8)+.22*sin(x*.53);
-      }
+      ${shorelineGLSL}
       void main(){
-        float d=p.y-coast(p.x);
-        float uneven=.31*sin(p.x*.52+clock*.11)+.27*(n2(p*.48)-.5);
-        float wave=1.2+1.4*sin(clock*.58+.1*sin(p.x*.12));
-        float bands=exp(-pow((d-wave-uneven)*2.1,2.));
-        bands+=.31*exp(-pow((d-wave-1.42-.18*sin(p.x*.7+clock*.3))*2.2,2.));
-        float broken=smoothstep(.35,.64,n2(p*.7+vec2(0.,clock*.08)));
-        float alpha=clamp(bands*(.53+.48*broken),0.,.80);
-        alpha*=smoothstep(-73.,-62.,p.x)*(1.-smoothstep(62.,73.,p.x));
-        gl_FragColor=vec4(.91,.96,.91,alpha);
+        float d=p.y-shCoast(p.x);
+        float runup=shLine(p,clock);
+        float wobble=.32*sin(p.x*.63+clock*.22)+.24*(n2(p*.88)-.5);
+        float first=exp(-pow((d-runup+wobble)*1.35,2.));
+        float broken=smoothstep(.29,.67,n2(p*vec2(.75,1.1)+clock*.065));
+        float second=exp(-pow((d-runup+1.29+.19*sin(p.x*.9+clock*.31))*2.05,2.));
+        float separated=.30+.63*broken;
+        float opacity=clamp((first*.49+second*.23)*separated,0.,.76);
+        opacity*=smoothstep(-72.,-60.,p.x)*(1.-smoothstep(60.,72.,p.x));
+        float night=smoothstep(.62,1.,phase);
+        vec3 ink=mix(vec3(.91,.95,.91),vec3(.60,.70,.79),night);
+        gl_FragColor=vec4(ink,opacity);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }
     `
   });
-  const mesh=new T.Mesh(g,m);mesh.renderOrder=3;scene.add(mesh);
+  const mesh=new T.Mesh(g,m);
+  mesh.renderOrder=3;
+  scene.add(mesh);
 }
 function seagrass(scene,compact){
   // Sparse, rounded dune plants only; never use pointed triangle billboards.
@@ -235,10 +278,11 @@ function shorelineDetails(scene){
   }
   shells.computeBoundingSphere();scene.add(shells);
 }
-export function makeBeach(scene,time,compact=false){
-  const ground=sand(scene);
-  sea(scene,time);
-  foam(scene,time);
+export function makeBeach(scene,time,compact=false,phase={value:0}){
+  const sandSurface=sand(scene,time);
+  const ground=sandSurface.mesh;
+  sea(scene,time,phase);
+  foam(scene,time,phase);
   seagrass(scene,compact);
   shorelineDetails(scene);
   const spawnPoints=[
@@ -247,6 +291,7 @@ export function makeBeach(scene,time,compact=false){
   ];
   return {
     heightAt,canWalk,spawnPoints,
-    pick(raycaster){return raycaster.intersectObject(ground,false)[0]?.point??null;}
+    pick(raycaster){return raycaster.intersectObject(ground,false)[0]?.point??null;},
+    update(){sandSurface.updateWet(time.value);}
   };
 }
