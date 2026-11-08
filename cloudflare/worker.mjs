@@ -3,7 +3,7 @@ import { parsePresenceState, ROOM_CAPACITY } from '../shared/presence-state.mjs'
 
 const handshakeMs = 12000;
 // Only known worlds get rooms; unknown values fall back to the original cliff.
-const roomName = (map) => map === 'hill' ? 'gonggang-hill' : 'gonggang-main';
+const roomName = (map) => ({hill:'gonggang-hill',campus:'gonggang-campus',beach:'gonggang-beach',cliff:'gonggang-main'}[map] ?? 'gonggang-main');
 
 function reply(message, status, extraHeaders = {}) {
   return new Response(message, { status, headers: { 'Cache-Control': 'no-store', ...extraHeaders } });
