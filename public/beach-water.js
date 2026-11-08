@@ -116,6 +116,14 @@ export function makeBeachWater(scene, time, compact, heightAt, light) {
         }
         vec3 color = mix(water * (.68 + anti * (a * .041 + b * .029) + swellSurface * .039), reflectedSky, .10 + fresnel * .25);
         color += glints * (.44 + fresnel * .56);
+        // A broad, interrupted golden reflection path: never a solid stripe.
+        // The narrow specular glints above still supply the individual sparkles.
+        vec2 waterRay = normalize(p - cameraPosition.xz + vec2(.0001));
+        float towardsSun = max(0., dot(waterRay, normalize(sun.xz)));
+        float lightPath = smoothstep(.915, .997, towardsSun) * sunVisible;
+        float sparkleVariation = .57 + .43 * n2(p * .18 + vec2(clock * .023, -clock * .039));
+        float pathFade = 1. - smoothstep(450., 900., range);
+        color += sunColor * lightPath * pathFade * (.035 + .052 * sparkleVariation);
 
         float foam = 0.;
         if (d > -51. && range < 175.) {
