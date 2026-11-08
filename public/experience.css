@@ -520,3 +520,40 @@
 @media (pointer: coarse) {
   .beach-timeline input { height: 28px; margin: 0; }
 }
+
+/* Contextual seating beside the three campus benches. */
+.cliff-bench-action {
+  position:absolute;
+  right:max(var(--cliff-inset),env(safe-area-inset-right));
+  bottom:calc(max(var(--cliff-inset),env(safe-area-inset-bottom)) + 66px);
+  padding:10px 17px;
+  pointer-events:auto;
+  border:1px solid rgba(255,232,194,.52);
+  border-radius:100px;
+  background:rgba(38,51,45,.82);
+  color:#fff2dd;
+  box-shadow:0 5px 18px rgba(0,0,0,.15);
+  backdrop-filter:blur(12px);
+  font:600 12px/1.25 "Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  cursor:pointer;
+}
+.cliff-bench-action:hover,
+.cliff-bench-action:focus-visible {
+  background:rgba(70,88,68,.96);
+}
+@media(max-width:620px) {
+  .cliff-bench-action {
+    right:max(13px,env(safe-area-inset-right));
+    bottom:calc(max(17px,env(safe-area-inset-bottom)) + 58px);
+    min-height:42px;padding:9px 12px;font-size:11px;
+  }
+}
+
+/* While filming: literally no HUD, instructions or movement overlays.
+   Stop with Esc/R on desktop or double-tap the landscape on mobile. */
+body.gongang-filming .cliff-ui,
+body.gongang-filming .beach-timeline {
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
