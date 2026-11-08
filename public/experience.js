@@ -1,3 +1,4 @@
+import { installDonations } from './donations.js';
 const palette = [0xd7a56d, 0x968473, 0x9c9c76, 0x8a9e9e, 0xb07d75, 0xc0a082, 0x9a889d, 0x88957c];
 const actionNames = { sit: '앉기', lie: '눕기', greet: '인사', signal: '빛', photo: '사진', film: '영상' };
 const icons = {
@@ -410,6 +411,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const element = renderer.domElement;
   element.style.touchAction = 'none';
   const ui = buildInterface(root);
+  installDonations(ui);
   ui.classList.toggle('cliff-campus', mapId === 'campus');
   ui.classList.toggle('cliff-beach', mapId === 'beach');
   if (mapId === 'campus') ui.querySelector('.cliff-tagline').textContent = '사범대학관과 학술정보관 사이, 함께 머무는 잔디밭';
