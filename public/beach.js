@@ -93,7 +93,8 @@ function sea(scene,time,phase){
       void main(){
         vec2 p=world.xz;
         float d=p.y-shCoast(p.x);
-        float runup=shLine(p,clock);
+        if(d>6.4)discard;
+        float runup=d < -3.0 ? 6.0 : shLine(p,clock);
         float night=smoothstep(.62,.98,phase);
         vec3 eye=normalize(cameraPosition-world);
         float distanceToEye=length(cameraPosition-world);
