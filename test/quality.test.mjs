@@ -25,6 +25,8 @@ test('adaptive resolution recovers slowly after smooth rendering', () => {
   const controller = createResolutionController();
   sampleFrames(controller, 20, 120);
   assert.equal(controller.scale, 0.88);
+  // Start a fresh measurement window after the simulated load changes.
+  controller.reset();
   assert.equal(sampleFrames(controller, 60, 650)[0], 0.94);
   assert.equal(controller.scale, 0.94);
   controller.reset();
