@@ -8,7 +8,7 @@ export function makeBeachWater(scene, time, compact, heightAt, light) {
   for (let i = 0; i < width; i++) xs.push(-96 + 192 * i / (width - 1));
   xs.push(110, 236, 700);
   const rows = [-1375, -450, -180, -95, -65];
-  for (let d = -59; d < -5; d += 2.7) rows.push(d);
+  for (let d = -59; d < -5; d += compact ? 2.15 : 1.35) rows.push(d);
   for (let d = -5; d <= 6.5; d += .5) rows.push(d);
   const position = [], distance = [], indices = [];
   for (let j = 0; j < rows.length; j++) {
@@ -39,6 +39,14 @@ export function makeBeachWater(scene, time, compact, heightAt, light) {
       varying vec3 world;
       void main() {
         vec3 point = position;
+        // Two crossing, low-frequency swells give the offshore water genuine
+        // height and a readable silhouette. Taper both near the shoreline and
+        // at the distant coarse horizon to avoid shoreline mesh intersections.
+        float ocean = (1. - smoothstep(-28., -7., shoreDistance))
+          * smoothstep(-120., -42., shoreDistance);
+        float waveA = point.z * .205 + point.x * .047 - clock * .43;
+        float waveB = point.z * .145 - point.x * .069 - clock * .32 + .21 * sin(waveA);
+        point.y += ocean * (.32 * sin(waveA) + .17 * sin(waveB));
         float ripples = smoothstep(-65., -10., shoreDistance) * (1. - smoothstep(-7., -.8, shoreDistance));
         point.y += ripples * (.038 * sin(point.z * 1.17 + point.x * .37 - clock * .98)
           + .028 * sin(point.z * .59 - point.x * .84 - clock * .78));
@@ -81,7 +89,16 @@ export function makeBeachWater(scene, time, compact, heightAt, light) {
           float drift = n2(p * vec2(.025, .021) + clock * .007);
           swellSurface = sin(p.y * .27 + p.x * .06 - clock * .43 + drift * 5.7) * broad;
         }
-        vec3 normal = normalize(vec3((a * .065 + b * .047) * anti, 1., (b * .045 + c * .019) * anti + swellSurface * .020));
+        // Match the specular normal to the deformed offshore surface.
+        float ocean = (1. - smoothstep(-28., -7., d)) * smoothstep(-120., -42., d);
+        float phaseA = p.y * .205 + p.x * .047 - clock * .43;
+        float phaseB = p.y * .145 - p.x * .069 - clock * .32 + .21 * sin(phaseA);
+        float slopeX = .32 * .047 * cos(phaseA) +
+          .17 * (-.069 + .21 * .047 * cos(phaseA)) * cos(phaseB);
+        float slopeZ = .32 * .205 * cos(phaseA) +
+          .17 * (.145 + .21 * .205 * cos(phaseA)) * cos(phaseB);
+        vec3 normal = normalize(vec3((a * .065 + b * .047) * anti - ocean * slopeX,
+          1., (b * .045 + c * .019) * anti + swellSurface * .020 - ocean * slopeZ));
         vec3 reflected = reflect(-eye, normal);
         float fresnel = pow(1. - max(0., dot(normal, eye)), 4.);
         float elevation = max(0., reflected.y);

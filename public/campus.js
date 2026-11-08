@@ -1,5 +1,6 @@
 import * as T from 'three';
 import { rng, fbm, noise, shaderNoise, smooth } from './nature.js';
+import { addGroundCover } from './groundcover.js';
 
 // The lawn between Sangmyung's College of Education and Academic Information Center.
 // The central court stays clear between the planted edges and academic wings.
@@ -729,6 +730,13 @@ export function makeCampus(scene,time,compact=false) {
   const canopies=pineSites.map(([x,z,height],i)=>pine(details,x,z,height,i,compact));
   deciduousSites.forEach(([x,z,height],i)=>deciduous(details,x,z,height,i,compact));
   edgePlanting(details,compact);
+  // Low foreground tufts add real depth without alpha textures or individual draw calls.
+  // Restrict them to the central garden and keep the benches and paved paths clear.
+  addGroundCover(T,details,{
+    seed:821740,count:compact?1450:3400,bounds:[-14.5,-29,14.5,13.5],
+    allow:(x,z)=>gardenCover(x,z)>.6&&canWalk(x,z),heightAt,
+    colors:['#617349','#81905b','#9a9c6b','#a4a079','#74845a','#b6ad80']
+  });
   for(const [x,z] of [[-14.5,11.8],[14.0,12.2],[-15.1,-23],[15.6,-23]])addLamp(details,x,z);
   batchCampusDetails(scene,details);
   const spawnPoints=[
