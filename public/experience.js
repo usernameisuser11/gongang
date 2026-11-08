@@ -1,6 +1,7 @@
 const palette = [0xd7a56d, 0x968473, 0x9c9c76, 0x8a9e9e, 0xb07d75, 0xc0a082, 0x9a889d, 0x88957c];
-const actionNames = { sit: '앉기', lie: '눕기', greet: '인사', signal: '빛' };
+const actionNames = { sit: '앉기', lie: '눕기', greet: '인사', signal: '빛', photo: '사진' };
 const icons = {
+  photo: '<path d="M4 7h4l2-2h4l2 2h4v12H4z"/><circle cx="12" cy="13" r="3.3"/>',
   sit: '<circle cx="13" cy="5" r="1.6"/><path d="m12 9-2 4 4 2h4m-8-2-3 5h12"/>',
   lie: '<circle cx="5" cy="13" r="1.5"/><path d="m8 15 5-2 6 2M3 18h18"/>',
   greet: '<path d="M8 11V7m3 4V5m3 6V6m3 6V9m0 2v4c0 3-2 5-5 5h-1c-2 0-3-1-4-3l-2-4c-.5-1 .5-2 1.5-1.4L8 13v-3M3 8l1-2m16 0 1 2"/>',
@@ -546,7 +547,34 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
     }
   }
 
+  function savePhoto() {
+    // Save the WebGL scene itself so large buttons never cover a group photo.
+    // Copy synchronously after a fresh render: preserveDrawingBuffer can stay false.
+    try {
+      renderer.render(scene, camera);
+      const source = renderer.domElement;
+      const maxWidth = 2048;
+      const scale = Math.min(1, maxWidth / source.width);
+      const output = document.createElement('canvas');
+      output.width = Math.max(1, Math.round(source.width * scale));
+      output.height = Math.max(1, Math.round(source.height * scale));
+      const context = output.getContext('2d', { alpha: false });
+      if (!context) return;
+      context.drawImage(source, 0, 0, output.width, output.height);
+      const a = document.createElement('a');
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      a.download = 'gongang-' + mapId + '-' + stamp + '.png';
+      a.href = output.toDataURL('image/png');
+      document.body.append(a);
+      a.click();
+      a.remove();
+    } catch (error) {
+      console.warn('사진 저장 실패', error);
+      statusText.textContent = '사진을 저장하지 못했어요. 화면 캡처를 이용해 주세요.';
+    }
+  }
   function doAction(action) {
+    if (action === 'photo') { savePhoto(); return; }
     if (action === 'sit' || action === 'lie') {
       destination = null;
       guidedStop = null;
