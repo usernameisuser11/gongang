@@ -180,11 +180,20 @@ presence.on('connection', (socket, req) => {
   });
   socket.on('message', (raw, binary) => {
     const now = Date.now();
-    if (binary || now - peer.lastMessageAt < 40) return;
-    peer.lastMessageAt = now;
-
+    if (binary) return;
     const input = parsePresenceState(raw.toString());
     if (!input) return;
+
+    // Prioritize posture/gesture changes over movement throttling. A short
+    // movement packet must not swallow a nearby greeting or seat action.
+    const actionChanged = peer.state && (
+      input.pose !== peer.state.pose ||
+      input.gesture !== peer.state.gesture ||
+      input.signal !== peer.state.signal
+    );
+    if (!actionChanged && now - peer.lastMessageAt < 40) return;
+    if (peer.state && Object.keys(input).every(key => peer.state[key] === input[key])) return;
+    peer.lastMessageAt = now;
     if (!peer.state) {
       try {
         sqlite.record.run();
