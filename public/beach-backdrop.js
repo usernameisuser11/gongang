@@ -1,4 +1,3 @@
-import * as T from 'three';
 import { fbm, noise, smooth } from './nature.js';
 
 // All land is outside the walkable beach. Soft atmospheric fog and actual
@@ -34,7 +33,7 @@ export function backdropHeight(island, u, v) {
   return -3.5 + coast * (island.peak * ridge + irregularity);
 }
 
-function makeLandmass(island, compact) {
+function makeLandmass(T, island, compact) {
   const columns = compact ? 48 : 72;
   const rows = compact ? 36 : 52;
   const positions = [], colors = [], indices = [];
@@ -84,8 +83,8 @@ function makeLandmass(island, compact) {
   return terrain;
 }
 
-export function makeBeachBackdrop(scene, compact = false) {
-  const terrain = LANDMASSES.map(island => makeLandmass(island, compact));
+export function makeBeachBackdrop(T, scene, compact = false) {
+  const terrain = LANDMASSES.map(island => makeLandmass(T, island, compact));
   for (const island of terrain) scene.add(island);
   return terrain;
 }
