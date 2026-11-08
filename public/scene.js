@@ -1,4 +1,5 @@
 import * as T from 'three';
+import { createResolutionController } from './render-quality.js';
 import { makeLand, makeFarCoast } from './land.js';
 import { makeHill } from './hill.js';
 import { makeCampus, makeCampusSky } from './campus.js';
@@ -153,6 +154,9 @@ function start() {
     soundControl.closest('.cliff-toggle').hidden = true;
   }
 
+  const resolutionController = createResolutionController();
+  let renderScale = 1;
+
   function resize() {
     const width=window.innerWidth, height=window.innerHeight;
     const isPortrait=height>width;
@@ -160,22 +164,36 @@ function start() {
     camera.fov=isPortrait?84:48;
     camera.updateProjectionMatrix();
     const pixelRatioCap = compact ? (beachLight ? 1.20 : 1.38) : 1.35;
-    renderer.setPixelRatio(Math.min(devicePixelRatio||1,pixelRatioCap,(compact?1050:1760)/Math.max(width,height)));
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,pixelRatioCap,(compact?1050:1760)/Math.max(width,height)) * renderScale);
     renderer.setSize(width,height,false);
   }
   window.addEventListener('resize',resize,{passive:true});
+  window.visualViewport?.addEventListener('resize',resize,{passive:true});
   resize();
   renderer.render(scene,camera);
   loading.hidden=true;
   viewport.dataset.ready='true';
   const waveRate = reducedMotion ? 0.14 : 1;
   let previous=performance.now(), lastTimelineUpdate=0;
-  if (beachLight) document.addEventListener('visibilitychange', () => { previous = performance.now(); });
+  document.addEventListener('visibilitychange', () => {
+    previous = performance.now();
+    resolutionController.reset();
+  });
   renderer.setAnimationLoop(now=>{
     const frameSeconds=Math.max(0,(now-previous)/1000);
     const dt=Math.min(.075,frameSeconds);
     previous=now;
     if(document.hidden) return;
+    // Keep recording output dimensions constant during video capture.
+    if (document.body.classList.contains('gongang-filming')) {
+      resolutionController.reset();
+    } else {
+      const nextScale = resolutionController.sample(frameSeconds);
+      if (nextScale !== null && nextScale !== renderScale) {
+        renderScale = nextScale;
+        resize();
+      }
+    }
     elapsed+=beachLight?frameSeconds:dt;
     time.value=8.4+elapsed*waveRate;
     if (beachLight) {
