@@ -234,7 +234,7 @@ function buildInterface(root) {
       <h1>공강</h1>
       <p class="cliff-tagline">수업과 수업 사이, 상명인을 위한 작은 쉼터</p>
       <p class="cliff-status" data-status role="status">잠시 쉬어가는 중</p>
-      <label class="cliff-world">풍경 <select data-world aria-label="풍경 선택"><option value="cliff">바람의 절벽</option><option value="hill">상명의 언덕길</option><option value="campus">사범관 · 학정관 잔디밭</option></select></label>
+      <label class="cliff-world">풍경 <select data-world aria-label="풍경 선택"><option value="cliff">바람의 절벽</option><option value="hill">상명의 언덕길</option><option value="campus">사범관 · 학정관 잔디밭</option><option value="beach">노을빛 모래 해변</option></select></label>
       <button class="cliff-gather" type="button" data-gather hidden>✦ 잔디밭에 함께 모이기</button>
       <section class="cliff-journey" data-journey hidden aria-label="등굣길 진행 상황">
         <button class="cliff-journey-toggle" type="button" data-journey-toggle aria-expanded="false" aria-controls="cliff-journey-details" aria-label="등굣길 진행 상황 펼치기">
@@ -407,9 +407,12 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   element.style.touchAction = 'none';
   const ui = buildInterface(root);
   ui.classList.toggle('cliff-campus', mapId === 'campus');
+  ui.classList.toggle('cliff-beach', mapId === 'beach');
   if (mapId === 'campus') ui.querySelector('.cliff-tagline').textContent = '사범대학관과 학술정보관 사이, 함께 머무는 잔디밭';
+  if (mapId === 'beach') ui.querySelector('.cliff-tagline').textContent = '발걸음을 맞추고, 파도 곁에 함께 머무는 시간';
   const gatherButton = ui.querySelector('[data-gather]');
-  gatherButton.hidden = mapId !== 'campus';
+  gatherButton.hidden = !['campus','beach'].includes(mapId);
+  if(mapId === 'beach') gatherButton.textContent = '✦ 해변에서 함께 모이기';
   const panel = ui.querySelector('[data-panel]');
   const settings = ui.querySelector('[data-settings]');
   const journey = ui.querySelector('[data-journey]');
@@ -561,7 +564,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   }
   for (const button of actionButtons) button.addEventListener('click', () => doAction(button.dataset.action));
   gatherButton.addEventListener('click', () => {
-    if (mapId !== 'campus') return;
+    if (!['campus','beach'].includes(mapId)) return;
     // Rejoin the visible central lawn without changing worlds or the room.
     const spots = terrain.spawnPoints ?? [{x:0,z:5}];
     const spot = spots[Math.floor(Math.random()*spots.length)];
@@ -712,7 +715,7 @@ export function createExperience({ THREE, scene, camera, renderer, terrain, spaw
   const onlineText = ui.querySelector('[data-online]');
   const statusText = ui.querySelector('[data-status]');
   function refreshStatus() {
-    const worldName = mapId === 'campus' ? '사범관 · 학정관 잔디밭' : mapId === 'hill' ? '상명의 언덕길' : '해 질 녘';
+    const worldName = mapId === 'beach' ? '노을빛 모래 해변' : mapId === 'campus' ? '사범관 · 학정관 잔디밭' : mapId === 'hill' ? '상명의 언덕길' : '해 질 녘';
     statusText.textContent = transportStatus === 'online' && remote.size
       ? `${worldName} · ${remote.size}명과 함께`
       : `${worldName} · ${statusCopy[transportStatus][0]}`;
