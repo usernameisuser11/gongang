@@ -3,6 +3,7 @@ import { rng, fbm, smooth } from './nature.js';
 import { coast } from './shore-motion.js';
 import { makeBeachWater } from './beach-water.js';
 import { makeBeachMoisture, applyBeachMoisture } from './beach-moisture.js';
+import { addGroundCover } from './groundcover.js';
 
 // An open, walkable sandy shore where up to eight travelers can gather.
 // +Z is inland; the sea stretches toward -Z.
@@ -138,6 +139,13 @@ export function makeBeach(scene,time,compact,light){
   for(let i=0;i<rocks.length;i++)boulder(scene,...rocks[i],i);
   coastalPines(scene,rng(26081108));
   logs(scene);
+  // Sparse dune grasses live on dry outer sand only, leaving the shared central
+  // beach and the active swash completely open to visitors.
+  addGroundCover(T,scene,{
+    seed:58092,count:compact?550:1450,bounds:[-88,6,88,59],
+    allow:(x,z)=>Math.abs(x)>29&&z>coast(x)+22&&z<58&&Math.abs(x)<82,
+    heightAt,colors:['#a29b6c','#bbb184','#868b62','#c5ad79','#98916d']
+  });
   const spawnPoints=[
     {x:-5,z:10},{x:-2.2,z:12},{x:1,z:10},{x:4,z:12},
     {x:-7,z:17},{x:7,z:17},{x:-3,z:20},{x:3,z:20}
