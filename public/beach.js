@@ -2,6 +2,7 @@ import * as T from 'three';
 import { rng, fbm, smooth } from './nature.js';
 import { coast } from './shore-motion.js';
 import { makeBeachWater } from './beach-water.js';
+import { makeBeachBackdrop } from './beach-backdrop.js';
 import { makeBeachMoisture, applyBeachMoisture } from './beach-moisture.js';
 import { addGroundCover } from './groundcover.js';
 
@@ -136,6 +137,7 @@ export function makeBeach(scene,time,compact,light){
   const moisture=makeBeachMoisture(time,compact);
   const ground=sand(scene,compact,moisture,light);
   makeBeachWater(scene,time,compact,heightAt,light);
+  makeBeachBackdrop(scene,compact);
   for(let i=0;i<rocks.length;i++)boulder(scene,...rocks[i],i);
   coastalPines(scene,rng(26081108));
   logs(scene);
