@@ -57,3 +57,68 @@ a.cliff-donate-method:focus-visible {
   font-size: 10px;
   line-height: 1.5;
 }
+
+/* Always-visible, unobtrusive 3D donation link. Hidden automatically during filming
+   because the existing body.gongang-filming rule hides the entire .cliff-ui. */
+.cliff-donate-dock {
+  position: absolute;
+  z-index: 2;
+  left: max(var(--cliff-inset), env(safe-area-inset-left));
+  bottom: calc(max(var(--cliff-inset), env(safe-area-inset-bottom)) + 43px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 15px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 228, 187, .46);
+  border-radius: 999px;
+  background: rgba(33, 42, 40, .72);
+  color: #ffebcf;
+  text-decoration: none;
+  font: 650 12px/1.2 "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  letter-spacing: -.015em;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(15, 22, 20, .20);
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .16s ease, border-color .16s ease;
+}
+.cliff-donate-dock:hover,
+.cliff-donate-dock:focus-visible {
+  background: rgba(64, 66, 54, .93);
+  border-color: #ffe1ac;
+  outline: 2px solid rgba(255, 225, 172, .6);
+  outline-offset: 2px;
+}
+
+/* Portrait phones: keep the link above movement/action buttons and benches.
+   On the beach it sits just above the full-width tide scrubber. */
+@media (max-width: 760px) and (orientation: portrait) {
+  .cliff-donate-dock {
+    left: max(12px, env(safe-area-inset-left));
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 115px);
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 11px;
+  }
+  .cliff-beach .cliff-donate-dock {
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 166px);
+  }
+}
+/* Landscape phones have less vertical room; the beach timeline is to the right. */
+@media (max-width: 760px) and (orientation: landscape) {
+  .cliff-donate-dock {
+    left: max(12px, env(safe-area-inset-left));
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 58px);
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cliff-donate-dock { transition: none; }
+}
