@@ -31,10 +31,10 @@ const woodLight = mat('#b69876');
 const pathMat = mat('#c7b9a2');
 const trunkMat = mat('#675347');
 const crownMats = [
-  mat('#577e61', {flatShading:true}),
-  mat('#7c9c71', {flatShading:true}),
-  mat('#9eae78', {flatShading:true}),
-  mat('#446d59', {flatShading:true})
+  mat('#577e61'),
+  mat('#7c9c71'),
+  mat('#9eae78'),
+  mat('#446d59')
 ];
 const grassBladeMat = mat('#8bae65',{vertexColors:true,side:T.DoubleSide,roughness:1});
 
@@ -219,7 +219,7 @@ function tree(scene,x,z,size,index) {
   for(let i=0;i<count;i++) {
     const a=(i*2.39996+index*.6);
     const radius=(.16+Math.sqrt(i/count)*.55)*size;
-    const geometry=new T.IcosahedronGeometry(1,1);
+    const geometry=new T.SphereGeometry(1,11,8);
     const p=geometry.attributes.position;
     for(let k=0;k<p.count;k++) {
       const wobble=.93+.10*Math.sin(k*1.6+i*4.1);
