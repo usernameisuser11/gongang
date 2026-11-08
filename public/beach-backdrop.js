@@ -1,4 +1,4 @@
-import { fbm, noise, rng, smooth } from './nature.js';
+import { fbm, noise, shaderNoise, smooth } from './nature.js';
 
 // All land is outside the walkable beach. Soft atmospheric fog and actual
 // geometry create depth without loading giant photographic background images.
@@ -76,6 +76,21 @@ function makeLandmass(T, island, compact) {
   const material = new T.MeshLambertMaterial({
     vertexColors: true, side: T.DoubleSide, fog: true,
   });
+  // Per-pixel geological variation is subtler than discrete circular tree
+  // clusters in a distant silhouette, and scales gracefully to mobile.
+  material.onBeforeCompile = shader => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 islandPoint;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nislandPoint = position;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 islandPoint;\n' + shaderNoise)
+      .replace('#include <color_fragment>', [
+        '#include <color_fragment>',
+        'float weathering = n2(islandPoint.xz * .095);',
+        'float strata = sin(islandPoint.y * 1.35 + n2(islandPoint.xz * .038) * 5.);',
+        'diffuseColor.rgb *= .85 + weathering * .24 + strata * .035;'
+      ].join('\n'));
+  };
   const terrain = new T.Mesh(geometry, material);
   terrain.castShadow = false;
   terrain.receiveShadow = false;
@@ -83,59 +98,8 @@ function makeLandmass(T, island, compact) {
   return terrain;
 }
 
-function makeForest(T, island, compact, geometry, material) {
-  // Forest crowns break up ridge silhouettes into small irregular clumps.
-  // One instance batch per island keeps them inexpensive on mobile.
-  const random = rng(Math.floor(island.seed * 9117));
-  const count = (island.id === 'western-headland' ? 175 : 72);
-  const samples = [];
-  for (let attempt = 0; attempt < count * 8 && samples.length < (compact ? Math.ceil(count * .57) : count); attempt++) {
-    const u = (random() - .5) * 1.72;
-    const v = (random() - .5) * 1.72;
-    const h = backdropHeight(island, u, v);
-    if (h < 5.5) continue;
-    const diameter = (island.id === 'western-headland' ? 1.5 : 1.25)
-      + random() * (island.id === 'western-headland' ? 3.4 : 2.6);
-    samples.push({
-      x: island.x + island.rx * u,
-      y: h + diameter * .10,
-      z: island.z + island.rz * v,
-      diameter,
-      green: random(),
-    });
-  }
-  if (!samples.length) return null;
-  const forest = new T.InstancedMesh(geometry, material, samples.length);
-  const transform = new T.Object3D(), color = new T.Color();
-  const darkGreen = new T.Color('#354d43'), paleGreen = new T.Color('#6e7860');
-  samples.forEach((sample, index) => {
-    transform.position.set(sample.x, sample.y, sample.z);
-    transform.rotation.set(.07 * sample.green, sample.green * 6.28, 0);
-    transform.scale.set(sample.diameter * 1.17, sample.diameter * .48, sample.diameter);
-    transform.updateMatrix();
-    forest.setMatrixAt(index, transform.matrix);
-    color.copy(darkGreen).lerp(paleGreen, sample.green * .67);
-    forest.setColorAt(index, color);
-  });
-  forest.instanceMatrix.needsUpdate = true;
-  if (forest.instanceColor) forest.instanceColor.needsUpdate = true;
-  forest.computeBoundingSphere();
-  forest.castShadow = false;
-  forest.receiveShadow = false;
-  forest.name = 'beach-forest-' + island.id;
-  return forest;
-}
-
 export function makeBeachBackdrop(T, scene, compact = false) {
-  const foliageGeometry = new T.IcosahedronGeometry(1, 1);
-  const foliageMaterial = new T.MeshLambertMaterial({ color: '#ffffff', fog: true });
-  const meshes = [];
-  for (const island of LANDMASSES) {
-    const landmass = makeLandmass(T, island, compact);
-    const trees = makeForest(T, island, compact, foliageGeometry, foliageMaterial);
-    scene.add(landmass);
-    meshes.push(landmass);
-    if (trees) { scene.add(trees); meshes.push(trees); }
-  }
-  return meshes;
+  const terrain = LANDMASSES.map(island => makeLandmass(T, island, compact));
+  for (const island of terrain) scene.add(island);
+  return terrain;
 }
