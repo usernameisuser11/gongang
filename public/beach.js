@@ -137,7 +137,7 @@ export function makeBeach(scene,time,compact,light){
   const moisture=makeBeachMoisture(time,compact);
   const ground=sand(scene,compact,moisture,light);
   makeBeachWater(scene,time,compact,heightAt,light);
-  makeBeachBackdrop(scene,compact);
+  makeBeachBackdrop(T,scene,compact);
   for(let i=0;i<rocks.length;i++)boulder(scene,...rocks[i],i);
   coastalPines(scene,rng(26081108));
   logs(scene);
