@@ -1,117 +1,132 @@
 import * as T from 'three';
-import { shaderNoise } from './nature.js';
-import { sunDirection } from './atmosphere.js';
+import { rng, shaderNoise } from './nature.js';
 
-// Dedicated twilight-to-starlight sky for the 3D beach.
-// phase: 0 = sunset, 1 = dark night; 9 minutes each direction.
-const vertexShader = String.raw`
-  varying vec3 world;
-  void main(){
-    world=(modelMatrix*vec4(position,1.)).xyz;
-    gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);
-  }
-`;
-export function makeBeachSky(scene,time,phase) {
-  const sun=new T.Vector3(-.5,.15,-.84).normalize();
-  const uniforms={clock:time,phase,sun:{value:sun}};
-  const sky=new T.Mesh(new T.SphereGeometry(760,48,32),new T.ShaderMaterial({
-    side:T.BackSide,depthWrite:false,depthTest:false,
-    uniforms,vertexShader,
-    fragmentShader:String.raw`
+function loadCloud(layer, ready) {
+  const file = `quiet-shore-cloud-${layer}.png`;
+  const source = globalThis.BARAMUI_ASSETS?.[file] ?? `./assets/${file}`;
+  const texture = new T.TextureLoader().load(source, () => { ready.value = 1; });
+  texture.colorSpace = T.SRGBColorSpace;
+  texture.wrapS = T.MirroredRepeatWrapping;
+  return texture;
+}
+
+export function makeBeachSky(scene, time, phase, light) {
+  const firstReady = { value: 0 }, secondReady = { value: 0 };
+  const uniforms = {
+    ...light.uniforms, clock: time, firstReady, secondReady,
+    cloudA: { value: loadCloud(1, firstReady) },
+    cloudB: { value: loadCloud(2, secondReady) },
+  };
+  const sky = new T.Mesh(new T.SphereGeometry(760, 40, 24), new T.ShaderMaterial({
+    side: T.BackSide, depthWrite: false,
+    uniforms,
+    vertexShader: String.raw`
       varying vec3 world;
-      uniform float clock;
-      uniform float phase;
-      uniform vec3 sun;
-      ${shaderNoise}
-      void main(){
-        vec3 ray=normalize(world-cameraPosition);
-        float elev=max(0.,ray.y);
-        float dusk=smoothstep(.27,.78,phase);
-        float night=smoothstep(.66,1.,phase);
-        float sunDot=max(0.,dot(ray,sun));
-        vec3 top=mix(vec3(.27,.36,.50),vec3(.014,.024,.068),night);
-        vec3 mid=mix(vec3(.46,.42,.56),vec3(.028,.044,.099),night);
-        vec3 rim=mix(vec3(.92,.59,.42),vec3(.055,.082,.135),night);
-        top=mix(top,vec3(.29,.19,.42),dusk*(1.-night)*.58);
-        rim=mix(rim,vec3(.54,.28,.48),dusk*(1.-night)*.70);
-        vec3 color=mix(rim,mid,smoothstep(.016,.22,elev));
-        color=mix(color,top,smoothstep(.18,.7,elev));
-        float sunVisible=1.-smoothstep(.28,.67,phase);
-        float sunGlow=pow(sunDot,14.)*sunVisible;
-        color+=vec3(.93,.38,.13)*sunGlow*.43;
-        color+=vec3(1.1,.5,.20)*pow(sunDot,180.)*sunVisible*.45;
-        color+=vec3(1.4,.86,.42)*smoothstep(.99977,.99987,sunDot)*sunVisible;
-        vec2 p=ray.xz/max(.085,ray.y+.12);
-        vec2 q=p*vec2(1.52,2.4)+vec2(-clock*.007,1.3);
-        float low=fb2(q+vec2(n2(q*.32),n2(q*.29+7.))*.63);
-        float cloud=smoothstep(.51,.76,low)*smoothstep(.014,.12,elev);
-        vec3 cloudTint=mix(vec3(.69,.49,.52),vec3(.10,.13,.20),night);
-        cloudTint=mix(cloudTint,vec3(.91,.61,.47),sunGlow*.35);
-        float illumination=.59+.17*n2(q*.45+10.);
-        color=mix(color,cloudTint*illumination,cloud*(.38-.10*night));
-        // A quiet moon appears after the sky darkens; no artificial neon halo.
-        vec3 moon=normalize(vec3(.38,.31,-.89));
-        float moonDot=max(0.,dot(ray,moon));
-        float moonrise=smoothstep(.72,.93,phase);
-        float moonDisc=smoothstep(.99979,.99992,moonDot);
-        color+=vec3(.84,.90,.98)*moonDisc*moonrise*.68;
-        color+=vec3(.14,.20,.34)*pow(moonDot,95.)*moonrise*.23;
-        color+=(h2(gl_FragCoord.xy)-.5)*.006;
-        gl_FragColor=vec4(color,1.);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }
-    `
-  }));
-  sky.frustumCulled=false;
-  sky.renderOrder=-100;
-  scene.add(sky);
-  const rng=(() => {let n=98012;return () => ((n=(Math.imul(n,1664525)+1013904223)>>>0)/4294967296);})();
-  const position=[],brightness=[];
-  for(let i=0;i<1400;i++){
-    const y=.055+rng()*.90,theta=rng()*Math.PI*2;
-    const r=Math.sqrt(1-y*y)*475;
-    position.push(Math.sin(theta)*r,y*475,Math.cos(theta)*r);
-    brightness.push(.46+rng()*.54);
-  }
-  const g=new T.BufferGeometry();
-  g.setAttribute('position',new T.Float32BufferAttribute(position,3));
-  g.setAttribute('brightness',new T.Float32BufferAttribute(brightness,1));
-  const stars=new T.Points(g,new T.ShaderMaterial({
-    transparent:true,depthWrite:false,depthTest:true,
-    uniforms:{phase,clock:time},
-    vertexShader:String.raw`
-      attribute float brightness;
-      varying float starPower;
-      uniform float phase;
-      void main(){
-        starPower=brightness*smoothstep(.67,.96,phase);
-        gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);
-        gl_PointSize=1.1+1.3*brightness;
+      void main() {
+        world = (modelMatrix * vec4(position, 1.)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
       }
     `,
-    fragmentShader:String.raw`
-      varying float starPower;
-      uniform float clock;
-      void main(){
-        vec2 p=gl_PointCoord-.5;
-        float light=exp(-dot(p,p)*28.);
-        float alpha=light*starPower*.86;
-        if(alpha<.012)discard;
-        gl_FragColor=vec4(.80,.86,1.,alpha);
+    fragmentShader: String.raw`
+      varying vec3 world;
+      uniform float clock, sunVisible, moonVisible, firstReady, secondReady;
+      uniform vec3 sun, moon, sunColor, moonColor, horizon, middle, zenith, cloud;
+      uniform sampler2D cloudA, cloudB;
+      ${shaderNoise}
+      void main() {
+        vec3 ray = normalize(world - cameraPosition);
+        float elevation = max(0., ray.y);
+        float sunDot = max(0., dot(ray, sun));
+        vec3 color = mix(horizon, middle, smoothstep(.007, .25, elevation));
+        color = mix(color, zenith, smoothstep(.16, .73, elevation));
+        float sunGlow = 0.;
+        if (sunVisible > 0.) {
+          sunGlow = pow(sunDot, 14.) * sunVisible;
+          color += sunColor * (sunGlow * .24 + pow(sunDot, 170.) * sunVisible * .54);
+        }
+
+        float azimuth = atan(ray.x, -ray.z) * .63662 + .47;
+        vec2 cloudUV = vec2(azimuth + clock * .00023, elevation * 1.65);
+        vec4 highDeck = texture2D(cloudA, cloudUV);
+        vec4 lowDeck = texture2D(cloudB, vec2(azimuth * 1.5 + clock * .00034 + .27, elevation * 2.24));
+        float cloudWindow = smoothstep(.005, .075, elevation) * (1. - smoothstep(.48, .61, elevation));
+        float textureLight = dot(highDeck.rgb * .72 + lowDeck.rgb * .28, vec3(.28, .57, .15));
+        float cloudCover = cloudWindow * (firstReady * highDeck.a + secondReady * lowDeck.a * .5);
+        vec3 cloudLight = mix(cloud * (.48 + textureLight * 1.15), sunColor, sunGlow * .3);
+        color = mix(color, cloudLight, cloudCover);
+
+        float sunDisc = smoothstep(.99979, .99988, sunDot);
+        color += sunColor * sunDisc * sunVisible * (2.3 - cloudCover);
+        if (moonVisible > 0.) {
+          float moonDot = max(0., dot(ray, moon));
+          float moonDisc = smoothstep(.99993, .999973, moonDot);
+          float glow = pow(moonDot, 164.) * .105 + pow(moonDot, 30.) * .018;
+          color += moonColor * (moonDisc * .98 + glow) * moonVisible * (1. - cloudCover * .48);
+        }
+        color += (h2(gl_FragCoord.xy) - .5) * .0014;
+        gl_FragColor = vec4(color, 1.);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }
-    `
+    `,
   }));
-  stars.renderOrder=-95;
-  stars.frustumCulled=false;
+  sky.frustumCulled = false;
+  // Fill the background after opaque geometry so the depth test rejects sand and props.
+  sky.renderOrder = 100;
+  scene.add(sky);
+
+  const random = rng(98012);
+  const position = [], brightness = [];
+  for (let i = 0; i < 1250; i++) {
+    const y = .07 + random() * .93, theta = random() * Math.PI * 2;
+    const radius = Math.sqrt(1 - y * y) * 720;
+    position.push(Math.sin(theta) * radius, y * 720, Math.cos(theta) * radius);
+    brightness.push(.27 + random() ** 2 * .73);
+  }
+  const geometry = new T.BufferGeometry();
+  geometry.setAttribute('position', new T.Float32BufferAttribute(position, 3));
+  geometry.setAttribute('brightness', new T.Float32BufferAttribute(brightness, 1));
+  const stars = new T.Points(geometry, new T.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: {
+      starsVisible: light.uniforms.starsVisible,
+      cloudA: uniforms.cloudA, cloudB: uniforms.cloudB, firstReady, secondReady, clock: time,
+    },
+    vertexShader: String.raw`
+      attribute float brightness;
+      varying float starPower;
+      varying vec3 rayDirection;
+      uniform float starsVisible;
+      void main() {
+        starPower = brightness * starsVisible;
+        rayDirection = normalize(position);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
+        gl_PointSize = 1.25 + 1.7 * brightness;
+      }
+    `,
+    fragmentShader: String.raw`
+      varying float starPower;
+      varying vec3 rayDirection;
+      uniform float firstReady, secondReady, clock;
+      uniform sampler2D cloudA, cloudB;
+      void main() {
+        vec2 point = gl_PointCoord - .5;
+        float light = exp(-dot(point, point) * 19.);
+        float elevation = rayDirection.y;
+        float azimuth = atan(rayDirection.x, -rayDirection.z) * .63662 + .47;
+        float cloudCover = firstReady * texture2D(cloudA, vec2(azimuth + clock * .00023, elevation * 1.65)).a
+          + secondReady * texture2D(cloudB, vec2(azimuth * 1.5 + clock * .00034 + .27, elevation * 2.24)).a * .5;
+        float cloudWindow = smoothstep(.005, .075, elevation) * (1. - smoothstep(.48, .61, elevation));
+        float alpha = light * starPower * (1. - cloudCover * cloudWindow * .9) * .92;
+        if (alpha < .02) discard;
+        gl_FragColor = vec4(.70, .80, 1., alpha);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }
+    `,
+  }));
+  stars.renderOrder = -95;
+  stars.frustumCulled = false;
   scene.add(stars);
-  return {
-    update(p){
-      sun.set(-.53,.15-.45*p,-.83).normalize();
-      sunDirection.copy(sun);
-      stars.rotation.y=p*.045;
-    }
-  };
+  return { update() { stars.visible = phase.value > .66; } };
 }

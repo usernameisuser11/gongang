@@ -505,3 +505,18 @@
     padding:9px 12px;
   }
 }
+@media (min-width: 761px) and (max-width: 1050px), (orientation: landscape) and (min-width: 670px) and (max-width: 760px) {
+  .beach-timeline {
+    left: auto;
+    right: max(308px, calc(280px + env(safe-area-inset-right)));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    transform: none;
+    width: min(290px, calc(100vw - 440px));
+  }
+  .cliff-beach .cliff-hint {
+    bottom: calc(max(var(--cliff-inset), env(safe-area-inset-bottom)) + 60px);
+  }
+}
+@media (pointer: coarse) {
+  .beach-timeline input { height: 28px; margin: 0; }
+}

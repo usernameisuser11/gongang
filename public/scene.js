@@ -1,13 +1,15 @@
 import * as T from 'three';
 import { makeLand, makeFarCoast } from './land.js';
 import { makeHill } from './hill.js';
-import { makeCampus } from './campus.js';
+import { makeCampus, makeCampusSky } from './campus.js';
 import { makeBeach } from './beach.js';
 import { makeBeachSky } from './beach-sky.js';
+import { makeBeachLight } from './beach-light.js';
+import { getWaveEnergy } from './shore-motion.js';
 import { makeMeadow, makeTree } from './flora.js';
 import { makeSky, makeWater, sunDirection } from './atmosphere.js';
 import { createExperience } from './experience.js';
-import { installAmbientSound } from './ambient.js';
+import { installAmbientSound, installBeachSound } from './ambient.js';
 
 const viewport = document.getElementById('viewport');
 const loading = document.getElementById('loading');
@@ -17,12 +19,13 @@ const selectedMap = new URLSearchParams(location.search).get('map');
 const mapId = ['cliff','hill','campus','beach'].includes(selectedMap) ? selectedMap : 'campus';
 const requestedStop = new URLSearchParams(location.search).get('stop');
 const smokeWalk = location.hostname === '127.0.0.1' && new URLSearchParams(location.search).has('smokeWalk');
+const twilightSeconds = 9 * 60;
 
 function start() {
   const renderer = new T.WebGLRenderer({antialias:!compact, alpha:false, powerPreference:'high-performance'});
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.toneMapping = T.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = mapId === 'beach' ? 1.10 : mapId === 'campus' ? 1.20 : mapId === 'hill' ? 1.12 : 1.02;
+  renderer.toneMappingExposure = mapId === 'beach' ? 1.10 : mapId === 'campus' ? 1.08 : mapId === 'hill' ? 1.12 : 1.02;
   viewport.dataset.map = mapId;
   viewport.append(renderer.domElement);
   renderer.domElement.setAttribute('aria-label',mapId === 'beach' ? '친구들과 함께 걷는 3D 모래 해변' : mapId === 'campus' ? '상명대 사범대학관과 학술정보관 사이 잔디 쉼터' : mapId === 'hill' ? '걸어서 오르는 상명의 언덕길' : '걸어서 둘러보는 해안 초원');
@@ -31,10 +34,13 @@ function start() {
     loading.textContent = '풍경을 다시 불러오는 중…';
     loading.hidden = false;
   });
-  renderer.domElement.addEventListener('webglcontextrestored', () => { loading.hidden = true; });
+  renderer.domElement.addEventListener('webglcontextrestored', () => {
+    if (mapId === 'campus') renderer.shadowMap.needsUpdate = true;
+    loading.hidden = true;
+  });
 
   const scene = new T.Scene();
-  scene.fog = new T.FogExp2(mapId === 'beach' ? '#b0c2bd' : mapId === 'campus' ? '#b4c4bd' : mapId === 'hill' ? '#a2afb0' : '#9baab3', mapId === 'beach' ? .0018 : mapId === 'campus' ? .0028 : mapId === 'hill' ? .0046 : .0038);
+  scene.fog = new T.FogExp2(mapId === 'beach' ? '#b0c2bd' : mapId === 'campus' ? '#b4c7d1' : mapId === 'hill' ? '#a2afb0' : '#9baab3', mapId === 'beach' ? .0018 : mapId === 'campus' ? .0036 : mapId === 'hill' ? .0046 : .0038);
   const camera = new T.PerspectiveCamera(49,1,.13,1350);
   const time = {value:8.4};
   const beachPhase = {value:0};
@@ -44,18 +50,53 @@ function start() {
   sunset.position.copy(sunDirection).multiplyScalar(70);
   sunset.position.y += 16;
   scene.add(sunset);
-  // The beach has its own dusk-to-night sky. The original worlds remain untouched.
-  const beachSky = mapId === 'beach' ? makeBeachSky(scene,time,beachPhase) : null;
-  if (!beachSky) makeSky(scene,time);
-  const moonlight = mapId === 'beach' ? new T.DirectionalLight('#b4c9ed',0) : null;
-  if (moonlight) { moonlight.position.set(14,28,-34); scene.add(moonlight); }
-  const fogDusk = new T.Color('#b0c2bd');
-  const fogNight = new T.Color('#14243a');
+  const beachLight = mapId === 'beach' ? makeBeachLight() : null;
+  const beachSky = beachLight ? makeBeachSky(scene,time,beachPhase,beachLight) : null;
+  if (mapId === 'campus') {
+    makeCampusSky(scene,time);
+    hemi.color.set('#dbeaff');
+    hemi.groundColor.set('#908666');
+    hemi.intensity = 1.56;
+    sunset.color.set('#fff1d3');
+    sunset.intensity = 2.02;
+    sunset.position.set(26,53,37);
+    // The buildings and trees are fixed, so one shadow pass covers the court.
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.autoUpdate = false;
+    renderer.shadowMap.needsUpdate = true;
+    sunset.castShadow = true;
+    sunset.shadow.mapSize.setScalar(compact ? 1024 : 1536);
+    Object.assign(sunset.shadow.camera, { left: -48, right: 48, bottom: -48, top: 48, near: 0.2, far: 130 });
+    sunset.shadow.camera.updateProjectionMatrix();
+    sunset.shadow.normalBias = 0.035;
+    sunset.shadow.bias = -0.0002;
+  } else if (!beachSky) {
+    makeSky(scene,time);
+  }
+  const moonlight = beachLight ? new T.DirectionalLight('#b4c9ed',0) : null;
+  if (moonlight) scene.add(moonlight);
+  function setBeachPhase(phase) {
+    beachPhase.value = phase;
+    beachLight.update(phase);
+    beachSky.update(phase);
+    hemi.color.copy(beachLight.skyColor);
+    hemi.groundColor.copy(beachLight.groundColor);
+    hemi.intensity = beachLight.hemiStrength;
+    sunset.color.copy(beachLight.sunColor);
+    sunset.intensity = beachLight.sunStrength;
+    sunset.position.copy(beachLight.sun).multiplyScalar(80);
+    moonlight.color.copy(beachLight.moonColor);
+    moonlight.intensity = beachLight.moonStrength;
+    moonlight.position.copy(beachLight.moon).multiplyScalar(80);
+    renderer.toneMappingExposure = beachLight.exposure;
+    scene.fog.color.copy(beachLight.fogColor);
+  }
   let terrain;
   if (mapId === 'campus') {
     terrain = makeCampus(scene, time, compact);
   } else if (mapId === 'beach') {
-    terrain = makeBeach(scene,time,compact,beachPhase);
+    terrain = makeBeach(scene,time,compact,beachLight);
+    setBeachPhase(0);
   } else if (mapId === 'hill') {
     terrain = makeHill(scene, time, compact);
   } else {
@@ -81,8 +122,7 @@ function start() {
       : {distance:portrait?8.4:9.8,pitch:portrait?.135:.113,height:portrait?1.66:1.78,
           aimHeight:portrait?1.68:1.83,scale:1.01,speed:3.65}
   });
-  // Quiet Shore v11 used a 9-minute sunset exploration. Offer a compact
-  // 3D equivalent; wheel remains available for camera zoom.
+  let elapsed = 0;
   let beachOffset = 0;
   let scrubbing = false;
   let beachRange = null;
@@ -95,18 +135,21 @@ function start() {
     document.body.append(timeline);
     beachRange = timeline.querySelector('input');
     beachLabel = timeline.querySelector('output');
-    beachRange.addEventListener('pointerdown',()=>{scrubbing=true;});
-    for(const type of ['pointerup','pointercancel','change','blur'])
-      beachRange.addEventListener(type,()=>{scrubbing=false;});
-    beachRange.addEventListener('input',()=>{
-      beachOffset = Number(beachRange.value)/100*540 - elapsed;
-    });
+    const seek = () => { beachOffset = Number(beachRange.value) / 100 * twilightSeconds - elapsed; };
+    beachRange.addEventListener('input', seek);
+    beachRange.addEventListener('pointerdown', () => { scrubbing = true; });
+    const finishScrubbing = () => {
+      if (!scrubbing) return;
+      scrubbing = false;
+      seek();
+    };
+    for (const type of ['pointerup', 'pointercancel', 'blur']) window.addEventListener(type, finishScrubbing);
   }
   const soundControl = document.getElementById('wave-sound');
-  if (mapId === 'cliff' || mapId === 'beach') {
-    const waveFile = 'quiet-shore-waves.m4a';
-    installAmbientSound(soundControl,globalThis.BARAMUI_ASSETS?.[waveFile] ?? './assets/'+waveFile);
-  } else {
+  const updateSurf = beachLight ? installBeachSound(soundControl, t => getWaveEnergy(t, camera.position.x)) : null;
+  if (mapId === 'cliff') {
+    installAmbientSound(soundControl);
+  } else if (!beachLight) {
     soundControl.closest('.cliff-toggle').hidden = true;
   }
 
@@ -116,7 +159,8 @@ function start() {
     camera.aspect=width/height;
     camera.fov=isPortrait?84:48;
     camera.updateProjectionMatrix();
-    renderer.setPixelRatio(Math.min(devicePixelRatio||1,compact?1.38:1.35,(compact?1050:1760)/Math.max(width,height)));
+    const pixelRatioCap = compact ? (beachLight ? 1.20 : 1.38) : 1.35;
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,pixelRatioCap,(compact?1050:1760)/Math.max(width,height)));
     renderer.setSize(width,height,false);
   }
   window.addEventListener('resize',resize,{passive:true});
@@ -124,34 +168,31 @@ function start() {
   renderer.render(scene,camera);
   loading.hidden=true;
   viewport.dataset.ready='true';
-  let previous=performance.now(), elapsed=0, lastTimelineUpdate=0;
+  const waveRate = reducedMotion ? 0.14 : 1;
+  let previous=performance.now(), lastTimelineUpdate=0;
+  if (beachLight) document.addEventListener('visibilitychange', () => { previous = performance.now(); });
   renderer.setAnimationLoop(now=>{
-    const dt=Math.min(.075,Math.max(0,(now-previous)/1000));
+    const frameSeconds=Math.max(0,(now-previous)/1000);
+    const dt=Math.min(.075,frameSeconds);
     previous=now;
     if(document.hidden) return;
-    elapsed+=dt;
-    time.value=8.4+elapsed*(reducedMotion?.14:1);
-    if (beachSky) {
-      // 9 minutes to dark skies, then a gradual return to sunset.
-      const cycle=((elapsed+beachOffset)%1080+1080)%1080;
-      const p=cycle<=540?cycle/540:(1080-cycle)/540;
-      beachPhase.value=p;
-      beachSky.update(p);
-      const darkness=Math.min(1,Math.max(0,(p-.45)/.55));
-      hemi.intensity=1.76*(1-.78*darkness);
-      sunset.intensity=2.66*(1-.98*darkness);
-      sunset.position.copy(sunDirection).multiplyScalar(80);
-      moonlight.intensity=.42*darkness;
-      renderer.toneMappingExposure=1.10-.42*darkness;
-      scene.fog.color.copy(fogDusk).lerp(fogNight,darkness);
-      if (beachRange && now-lastTimelineUpdate>170) {
+    elapsed+=beachLight?frameSeconds:dt;
+    time.value=8.4+elapsed*waveRate;
+    if (beachLight) {
+      const period = 2 * twilightSeconds;
+      const cycle = ((elapsed + beachOffset) % period + period) % period;
+      const phase = scrubbing ? Number(beachRange.value) / 100 : 1 - Math.abs(1 - cycle / twilightSeconds);
+      setBeachPhase(phase);
+      if (now-lastTimelineUpdate>170) {
         lastTimelineUpdate=now;
-        if (!scrubbing) beachRange.value=String(Math.round(p*100));
-        beachLabel.textContent=p<.22?'황금빛 저녁':p<.47?'살구빛 노을':p<.70?'보랏빛 황혼':p<.88?'블루아워':'별이 뜨는 밤';
+        if (!scrubbing) beachRange.value=String(Math.round(phase*100));
+        const label = phase < .22 ? '황금빛 저녁' : phase < .51 ? '분홍빛 노을' : phase < .88 ? '블루아워' : '별이 뜨는 밤';
+        if (beachLabel.textContent !== label) beachLabel.textContent = label;
       }
     }
     experience.update(dt,elapsed);
     terrain.update?.(elapsed);
+    updateSurf?.(time.value, waveRate);
     renderer.render(scene,camera);
   });
 }
