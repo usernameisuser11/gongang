@@ -37,8 +37,13 @@ export function makeBeachSky(scene, time, phase, light) {
         vec3 ray = normalize(world - cameraPosition);
         float elevation = max(0., ray.y);
         float sunDot = max(0., dot(ray, sun));
-        vec3 color = mix(horizon, middle, smoothstep(.007, .25, elevation));
-        color = mix(color, zenith, smoothstep(.16, .73, elevation));
+        // Wide, layered atmospheric gradient: the horizon is warmer and
+        // softer while the upper sky keeps its cool blue depth.
+        vec3 color = mix(horizon, middle, smoothstep(.006, .32, elevation));
+        color = mix(color, zenith, smoothstep(.18, .79, elevation));
+        float solarAzimuth = max(0., dot(normalize(ray.xz), normalize(sun.xz)));
+        float wideGlow = pow(solarAzimuth, 7.) * exp(-elevation * 8.5) * sunVisible;
+        color += sunColor * (.065 * wideGlow + .025 * exp(-elevation * 18.) * sunVisible);
         float sunGlow = 0.;
         if (sunVisible > 0.) {
           sunGlow = pow(sunDot, 14.) * sunVisible;
@@ -46,14 +51,30 @@ export function makeBeachSky(scene, time, phase, light) {
         }
 
         float azimuth = atan(ray.x, -ray.z) * .63662 + .47;
-        vec2 cloudUV = vec2(azimuth + clock * .00023, elevation * 1.65);
+        // Two cloud sheets drift at different speeds and altitudes, with
+        // subtle shearing so their edges do not read as a flat panorama.
+        vec2 cloudUV = vec2(azimuth + clock * .00023
+          + .012 * sin(elevation * 12. + clock * .00018), elevation * 1.65);
         vec4 highDeck = texture2D(cloudA, cloudUV);
-        vec4 lowDeck = texture2D(cloudB, vec2(azimuth * 1.5 + clock * .00034 + .27, elevation * 2.24));
-        float cloudWindow = smoothstep(.005, .075, elevation) * (1. - smoothstep(.48, .61, elevation));
+        vec4 lowDeck = texture2D(cloudB, vec2(azimuth * 1.47
+          + clock * .00029 + .27, elevation * 2.1));
+        float cloudWindow = smoothstep(.003, .055, elevation)
+          * (1. - smoothstep(.49, .67, elevation));
         float textureLight = dot(highDeck.rgb * .72 + lowDeck.rgb * .28, vec3(.28, .57, .15));
-        float cloudCover = cloudWindow * (firstReady * highDeck.a + secondReady * lowDeck.a * .5);
-        vec3 cloudLight = mix(cloud * (.48 + textureLight * 1.15), sunColor, sunGlow * .3);
+        // Thin, broken lower cloudbank merges with the distant sea haze.
+        float bank = n2(vec2(azimuth * 8.6 + clock * .00011, elevation * 19.4 + 7.2));
+        float lowBank = smoothstep(.56, .75, bank)
+          * smoothstep(.008, .033, elevation)
+          * (1. - smoothstep(.09, .18, elevation)) * .28;
+        float cloudCover = clamp(
+          cloudWindow * (firstReady * highDeck.a + secondReady * lowDeck.a * .46)
+            + lowBank, 0., .84);
+        float sunsetTint = pow(solarAzimuth, 5.) * sunVisible;
+        vec3 cloudLight = mix(cloud * (.54 + textureLight * 1.04),
+          sunColor * .64 + cloud * .37, .18 + .37 * sunsetTint);
         color = mix(color, cloudLight, cloudCover);
+        // Low-altitude haze smooths the hard divide between water and sky.
+        color = mix(color, horizon, exp(-elevation * 34.) * .17);
 
         float sunDisc = smoothstep(.99979, .99988, sunDot);
         color += sunColor * sunDisc * sunVisible * (2.3 - cloudCover);
