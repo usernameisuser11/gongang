@@ -6,15 +6,17 @@ import { rng, fbm, smooth } from './nature.js';
 // Keep the central gathering lawn compact enough that eight travelers remain visible.
 const seed = rng(20261108);
 const trees = [];
-const benches = [
-  [-8.5, -6.8, Math.PI / 2], [8.5, -5.3, -Math.PI / 2],
-  [-7.8, 6.5, Math.PI / 2], [7.8, 6.5, -Math.PI / 2]
+// Layout derived from the supplied street-view walk: a planted, raised garden
+// between long brick glazing and a stepped modern building, not an empty field.
+const pineSites = [
+  [-7.7,-4.8,5.6], [3.7,0.4,6.2], [7.2,-10.2,5.8],
+  [-5.5,-14.8,5.0], [11.0,4.6,4.9], [-1.6,7.0,4.7],
+  [1.0,-22.0,5.1]
 ];
-const treeSites = [
-  [-25, 12, 5.3], [-28, -11, 6.2], [-25, -27, 5.1],
-  [26, 14, 5.8], [27, -25, 6.4], [20, -33, 5.2],
-  [-11, -31, 5.6], [1, -33, 6.4], [11, -31, 5.0],
-  [-30, 27, 7.7], [-17, 30, 6.1], [20, 31, 6.9], [33, -2, 7.2]
+const bareSites = [[-15.4,-4.0,10.2],[-15.6,-22.6,11.0],[-30,18,9.1],[15.1,27.5,10.2]];
+const benches = [
+  [-12.2,7.0,Math.PI/2], [14.3,9.9,-Math.PI/2],
+  [-12.5,-20.0,Math.PI/2]
 ];
 const C = (hex) => new T.Color(hex);
 const mat = (color, extra={}) => new T.MeshStandardMaterial({color,roughness:.94,...extra});
@@ -37,24 +39,36 @@ const crownMats = [
   mat('#446d59')
 ];
 
-function heightAt(x,z) {
-  const rimX = smooth(15,40,Math.abs(x));
-  const rimFront = smooth(17,47,z);
-  const rimBack = smooth(19,48,-z);
-  return 1.75 * rimX * rimX + .7 * rimFront + 2.1 * rimBack
-    + (rimX + rimFront + rimBack) * .17 * (fbm(x*.12,z*.11)-.5);
+function gardenRadius(x,z) {
+  const dx=(x-1.4)/15.5;
+  const dz=(z+6.0)/19.4;
+  const angle=Math.atan2(dz,dx);
+  const irregular=1+.046*Math.sin(angle*3.1+.6)+.027*Math.sin(angle*8.2);
+  return Math.sqrt(dx*dx+dz*dz)/irregular;
 }
+function gardenCover(x,z) {
+  return 1-smooth(.79,1.09,gardenRadius(x,z));
+}
+function heightAt(x,z) {
+  const outer=smooth(26,57,Math.abs(x))*1.25+smooth(24,56,-z)*1.7;
+  const cover=gardenCover(x,z);
+  const mound=cover*(.85+.17*fbm(x*.09+2,z*.11+8));
+  return .05+outer+mound;
+}
+
 function insideBox(x,z,cx,cz,halfX,halfZ,pad=0) {
   return Math.abs(x-cx)<halfX+pad && Math.abs(z-cz)<halfZ+pad;
 }
 function canWalk(x,z) {
-  if (Math.abs(x)>34 || z<-30 || z>36) return false;
-  if (insideBox(x,z,-18.3,-12.4,5.65,18.0,.65)) return false;
-  if (insideBox(x,z,18.1,-12.0,6.15,18.8,.65)) return false;
-  for (const [bx,bz] of benches) if (insideBox(x,z,bx,bz,1.65,.48,.18)) return false;
-  for (const [tx,tz] of treeSites) if (Math.hypot(x-tx,z-tz)<.78) return false;
+  if (Math.abs(x)>36 || z<-32 || z>39) return false;
+  if (insideBox(x,z,-22.4,-13.3,5.65,18.5,.65)) return false;
+  if (insideBox(x,z,23.0,-13.0,6.45,18.4,.65)) return false;
+  for(const [bx,bz] of benches)if(insideBox(x,z,bx,bz,1.70,.5,.14))return false;
+  for(const [tx,tz] of pineSites)if(Math.hypot(x-tx,z-tz)<.78)return false;
+  for(const [tx,tz] of bareSites)if(Math.hypot(x-tx,z-tz)<.65)return false;
   return true;
 }
+
 function box(parent, material, x,y,z, w,h,d) {
   const m = new T.Mesh(new T.BoxGeometry(w,h,d),material);
   m.position.set(x,y,z);
@@ -81,67 +95,102 @@ function planeShape(scene,shape,color,y,z=0,x=0) {
   return mesh;
 }
 function terrain(scene) {
-  const nX=119,nZ=128,p=[],col=[],idx=[];
-  const darkGrass=C('#6e8b64'),lightGrass=C('#a0b779'),earth=C('#b8aa8b'),tone=new T.Color();
-  for(let j=0;j<nZ;j++) for(let i=0;i<nX;i++) {
-    const x=-58+i*116/(nX-1),z=-70+j*135/(nZ-1);
-    const y=heightAt(x,z);
-    const variation=fbm(x*.12+21,z*.13);
-    tone.copy(darkGrass).lerp(lightGrass,.19+.72*variation);
-    const edge=Math.max(smooth(28,49,Math.abs(x)),smooth(40,68,Math.abs(z)));
-    tone.lerp(earth,edge*.30);
-    p.push(x,y,z);col.push(tone.r,tone.g,tone.b);
+  const nX=163,nZ=169,p=[],col=[],idx=[];
+  const grassDark=C('#65865e'),grassLight=C('#a1b688');
+  const soil=C('#ac9f82'),paving=C('#b5afa0'),asphalt=C('#656b6a');
+  const shade=new T.Color();
+  for(let j=0;j<nZ;j++)for(let i=0;i<nX;i++){
+    const x=-57+i*114/(nX-1),z=-62+j*125/(nZ-1);
+    const y=heightAt(x,z), cover=gardenCover(x,z);
+    const n=fbm(x*.12+21,z*.14+11),fine=fbm(x*.49,z*.51);
+    const road=smooth(15.2,17.0,z)*(1-smooth(30.5,33,z));
+    shade.copy(paving).lerp(soil,.20+.15*n);
+    shade.lerp(grassDark,cover*.85);
+    shade.lerp(grassLight,cover*(.28+.37*n));
+    shade.lerp(asphalt,road*.97);
+    shade.multiplyScalar(.94+.09*n+.03*fine);
+    col.push(shade.r,shade.g,shade.b);p.push(x,y,z);
     if(i<nX-1&&j<nZ-1){const a=j*nX+i,b=a+nX;idx.push(a,b,a+1,a+1,b,b+1);}
   }
   const g=new T.BufferGeometry();
   g.setAttribute('position',new T.Float32BufferAttribute(p,3));
   g.setAttribute('color',new T.Float32BufferAttribute(col,3));
   g.setIndex(idx);g.computeVertexNormals();
-  const mesh=new T.Mesh(g,new T.MeshStandardMaterial({vertexColors:true,roughness:1,side:T.DoubleSide}));
-  mesh.receiveShadow=true;scene.add(mesh);
-  return mesh;
+  const surface=new T.Mesh(g,new T.MeshStandardMaterial({vertexColors:true,roughness:1,side:T.DoubleSide}));
+  surface.receiveShadow=true;scene.add(surface);
+  return surface;
 }
-function lawn(scene) {
-  // Stone circulation band, generous lawn and a narrow timber deck edging the courtyard.
-  planeShape(scene,roundedShape(27.2,36,3.5),'#c9bda6',.018,-1.0);
-  planeShape(scene,roundedShape(21.3,29,3.0),'#82a66b',.037,-1.0);
-  planeShape(scene,roundedShape(18.7,26.7,2.4),'#91b376',.040,-1.0);
-  // Soft, flush color variations replace the former spike-shaped grass.
-  // Keep the lawn smooth and walkable, with no black triangles or towering blades.
-  const patchGeometry = new T.CircleGeometry(1, 20).rotateX(-Math.PI / 2);
-  const patchMaterial = new T.MeshBasicMaterial({
-    color:'#ffffff', transparent:true, opacity:.12, depthWrite:false,
-    side:T.DoubleSide, polygonOffset:true, polygonOffsetFactor:-1
+function lawn(scene,compact) {
+  // The lawn is itself the raised planted earth, not a floating flat polygon.
+  // Subtle patches lie flush with sampled terrain: no triangular grass spikes.
+  const patchGeometry=new T.CircleGeometry(1,20).rotateX(-Math.PI/2);
+  const patchMat=new T.MeshBasicMaterial({
+    color:'#ffffff',transparent:true,opacity:.09,depthWrite:false,
+    side:T.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1
   });
-  const patches = new T.InstancedMesh(patchGeometry, patchMaterial, compact?480:740);
-  const dummy = new T.Object3D(), tint = new T.Color();
-  const deep = C('#678e68'), light = C('#c1d09c');
+  const patches=new T.InstancedMesh(patchGeometry,patchMat,compact?390:660);
+  const dummy=new T.Object3D(),tint=new T.Color();
+  const a=C('#537e5d'),b=C('#b5c79a');
   for(let i=0;i<patches.count;i++){
     let x=0,z=0;
-    for(let attempt=0;attempt<20;attempt++){
-      x=(seed()-.5)*19.8; z=-1+(seed()-.5)*26.8;
-      if(Math.pow(x/10.4,8)+Math.pow((z+1)/14.3,8)<.8)break;
+    for(let trial=0;trial<35;trial++){
+      x=-14+seed()*30;z=-27+seed()*39;
+      if(gardenRadius(x,z)<.74)break;
     }
-    dummy.position.set(x,.048+seed()*.0015,z);
-    dummy.rotation.set(0,seed()*Math.PI*2,0);
-    const size=.32+seed()*1.3;
-    dummy.scale.set(size*(.7+seed()*1.8),1,size*(.35+seed()*.8));
-    dummy.updateMatrix();
-    patches.setMatrixAt(i,dummy.matrix);
-    tint.copy(deep).lerp(light,seed());
-    patches.setColorAt(i,tint);
+    dummy.position.set(x,heightAt(x,z)+.026,z);
+    dummy.rotation.y=seed()*Math.PI*2;
+    dummy.scale.set(.17+seed()*.64,1,.11+seed()*.53);
+    dummy.updateMatrix();patches.setMatrixAt(i,dummy.matrix);
+    patches.setColorAt(i,tint.copy(a).lerp(b,seed()));
   }
   patches.instanceMatrix.needsUpdate=true;
-  patches.computeBoundingSphere();
-  patches.renderOrder=2;
-  scene.add(patches);
-  // Two understated wood platforms: not a raised artificial stage.
-  for(const x of [-11.9,11.9]) {
-    box(scene,wood,x,.065,-2,2.35,.115,26);
-    for(let k=0;k<19;k++) box(scene,woodLight,x,.132,-14.15+k*1.36,2.24,.018,.045);
+  patches.computeBoundingSphere();scene.add(patches);
+  // Organic stone retaining edge, assembled as shallow irregular segments.
+  const stone=mat('#adab99');
+  const curb=mat('#c6c2b4');
+  const n=92;
+  for(let i=0;i<n;i++){
+    const angle=(i+.5)*Math.PI*2/n;
+    const x=1.4+Math.cos(angle)*15.6,z=-6+Math.sin(angle)*19.5;
+    const radius=gardenRadius(x,z);
+    const y=heightAt(x,z);
+    const tangent=angle+Math.PI/2;
+    const segment=box(scene,i%7===0?stone:curb,x,y+.025,z,1.1,.12,.23);
+    segment.rotation.y=-tangent;
+    segment.scale.x=.86+.18*seed();
   }
-  return patches;
 }
+function siteDetails(scene) {
+  const lightStone=mat('#c5bca8'),grayStone=mat('#9d9a90');
+  const darkSteel=mat('#545b5a'),yellow=mat('#c9b96c'),whiteLine=mat('#d7d1bf');
+  // Parallel campus approach, vehicular roadway and zebra crossing.
+  for(const x of [-14.5,-11.0,-7.5,-4, -.5,3,6.5,10,13.5]){
+    box(scene,(x===-4||x===3)?yellow:whiteLine,x,.095,20.4,2.0,.023,2.35);
+  }
+  for(let x=-35;x<35;x+=8)box(scene,yellow,x,.075,27.6,3.7,.015,.10);
+  // Sidewalk separating the road from landscaped garden.
+  box(scene,lightStone,0,.08,14.5,75,.09,.47);
+  box(scene,grayStone,0,.085,32,75,.06,.30);
+  // Slim pedestrian rail, segmented with a welcoming central gap.
+  for(const [from,to] of [[-35,-6.0],[5.5,35]]){
+    for(let x=from;x<to;x+=3){
+      const endX=Math.min(to,x+3);
+      const m=(x+endX)/2;
+      box(scene,darkSteel,m,.93,13.45,endX-x,.055,.055);
+      box(scene,darkSteel,m,.55,13.45,endX-x,.038,.038);
+      box(scene,darkSteel,x,.58,13.45,.065,1.16,.065);
+    }
+  }
+  // Long natural walkway by each academic facade.
+  for(const x of [-14.4,14.5]){
+    for(let z=-29;z<13;z+=2.6) {
+      const y=heightAt(x,z);
+      const slab=box(scene,lightStone,x,y+.025,z,2.4,.045,2.5);
+      slab.rotation.y=(seed()-.5)*.016;
+    }
+  }
+}
+
 function teacherBuilding(scene) {
   const g=new T.Group();
   scene.add(g);
@@ -194,61 +243,81 @@ function libraryBuilding(scene) {
   for(let i=0;i<5;i++)box(g,pathMat,18.1,.09+i*.155,8.5+i*.66,10.3-i*.32,.31,.81);
 }
 function bench(scene,x,z,angle) {
-  const g=new T.Group();g.position.set(x,0,z);g.rotation.y=angle;scene.add(g);
+  const g=new T.Group();g.position.set(x,heightAt(x,z),z);g.rotation.y=angle;scene.add(g);
   for(const s of [-1,1]){
-    box(g,dark,s*1.0,.32,0,.085,.61,.63);
-    box(g,dark,s*1.0,.71,.34,.084,.82,.085);
+    box(g,dark,s*1.0,.29,0,.085,.59,.63);
+    box(g,dark,s*1.0,.67,.31,.084,.72,.08);
   }
-  for(let i=0;i<4;i++)box(g,woodLight,0,.68,-.33+i*.205,2.22,.065,.15);
-  for(let i=0;i<4;i++)box(g,wood,0,.93+i*.17,.44,2.20,.09,.075);
+  for(let i=0;i<4;i++)box(g,woodLight,0,.62,-.27+i*.18,2.19,.059,.13);
+  for(let i=0;i<4;i++)box(g,wood,0,.87+i*.13,.41,2.14,.07,.065);
 }
-function tree(scene,x,z,size,index) {
-  const group=new T.Group();
-  group.position.set(x,heightAt(x,z),z);
-  scene.add(group);
-  const trunk=new T.Mesh(new T.CylinderGeometry(.18,.39,size*.77,9,3),trunkMat);
-  trunk.position.y=size*.38;group.add(trunk);
-  for(let j=0;j<5;j++){
-    const a=j*Math.PI*2/5+index;
-    const branch=new T.Mesh(new T.CylinderGeometry(.04,.115,size*.37,6),trunkMat);
-    branch.position.set(Math.cos(a)*size*.18,size*(.43+j*.047),Math.sin(a)*size*.18);
-    branch.rotation.z=Math.cos(a)*.47;branch.rotation.x=Math.sin(a)*.45;
-    group.add(branch);
-  }
-  const canopy=new T.Group();group.add(canopy);canopy.position.y=size*.77;
-  const count=9+(index%4)*2;
-  for(let i=0;i<count;i++) {
-    const a=(i*2.39996+index*.6);
-    const radius=(.16+Math.sqrt(i/count)*.55)*size;
-    const geometry=new T.SphereGeometry(1,11,8);
-    const p=geometry.attributes.position;
-    for(let k=0;k<p.count;k++) {
-      const wobble=.93+.10*Math.sin(k*1.6+i*4.1);
-      p.setXYZ(k,p.getX(k)*wobble,p.getY(k)*(1+(k%3)*.05),p.getZ(k)*wobble);
+function branch(group,material,from,to,r0,r1) {
+  const start=new T.Vector3(...from),end=new T.Vector3(...to);
+  const len=start.distanceTo(end);
+  const mesh=new T.Mesh(new T.CylinderGeometry(r1,r0,len,7),material);
+  mesh.position.copy(start).add(end).multiplyScalar(.5);
+  mesh.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),end.clone().sub(start).normalize());
+  group.add(mesh);
+}
+function umbrellaPine(scene,x,z,size,index){
+  // Wind-shaped, umbrella-wide pine canopies with visible branching silhouettes.
+  const g=new T.Group();g.position.set(x,heightAt(x,z),z);g.rotation.y=index*.23;scene.add(g);
+  const bark=mat('#655648');
+  const leafColors=['#527554','#6d8b65','#8aa379','#476e58','#789368'].map(s=>mat(s));
+  const lean=index%2?.68:-.48;
+  branch(g,bark,[0,0,0],[lean,size*.48,.23],.19,.14);
+  branch(g,bark,[lean,size*.48,.23],[lean*1.4,size*.68,0],.14,.09);
+  const head=new T.Group();g.add(head);
+  head.position.set(lean*1.4,size*.61,0);
+  for(let i=0;i<7;i++){
+    const ang=i*6.283/7+index*.41,rad=size*(.25+.17*(i%3)/3);
+    const px=Math.cos(ang)*rad,pz=Math.sin(ang)*rad;
+    branch(g,bark,[lean,size*.5,.23],[lean*1.4+px,size*(.58+.06*(i%3)),pz],.055,.028);
+    for(let j=0;j<4;j++){
+      const a=i*6.283/7+j*1.71+index*.31;
+      const leaf=new T.Mesh(new T.SphereGeometry(1,11,7),leafColors[(i+j+index)%leafColors.length]);
+      leaf.position.set(px+Math.cos(a)*size*.15,size*(.04+.037*Math.sin(i+j)),pz+Math.sin(a)*size*.15);
+      leaf.scale.set(size*(.18+seed()*.045),size*(.105+seed()*.026),size*(.17+seed()*.04));
+      head.add(leaf);
     }
-    geometry.computeVertexNormals();
-    const leaf=new T.Mesh(geometry,crownMats[(i+index)%crownMats.length]);
-    leaf.position.set(Math.cos(a)*radius*.63,(seed()-.5)*size*.48,Math.sin(a)*radius*.6);
-    leaf.scale.set(size*(.23+seed()*.11),size*(.20+seed()*.11),size*(.23+seed()*.11));
-    canopy.add(leaf);
   }
-  trees.push({group,canopy,phase:index*.83,amount:.007+index%3*.002});
+  trees.push({canopy:head,phase:index*.83,amount:.007});
 }
+function bareTree(scene,x,z,size,index) {
+  const g=new T.Group();g.position.set(x,heightAt(x,z),z);scene.add(g);
+  const bark=mat('#736b60');
+  branch(g,bark,[0,0,0],[.1,size*.55,0],.24,.15);
+  branch(g,bark,[.1,size*.55,0],[.27,size*.83,0],.15,.075);
+  for(let i=0;i<10;i++){
+    const a=i*2.399+index,spread=size*(.19+.075*(i%3));
+    const anchor=[.1,size*(.4+(i%4)*.10),0];
+    const end=[Math.cos(a)*spread,size*(.63+(i%5)*.054),Math.sin(a)*spread*.69];
+    branch(g,bark,anchor,end,.05,.016);
+    for(let j=0;j<3;j++){
+      const t=j/3;
+      const root=anchor.map((v,k)=>v*(1-t)+end[k]*t);
+      const twig=[root[0]+Math.cos(a+j*1.8)*size*.07,root[1]+size*(.12+j*.017),root[2]+Math.sin(a+j*1.8)*size*.09];
+      branch(g,bark,root,twig,.014,.003);
+    }
+  }
+}
+
 function shrubs(scene) {
-  const green=[mat('#56735a'),mat('#708963'),mat('#8a9d70')];
-  const b=new T.IcosahedronGeometry(1,1);
-  for(const [cx,cz,l,d] of [
-    [-9.7,-17.5,18,1], [9.7,-17.5,18,1],
-    [-24,9.1,11,1.5],[24.1,10.9,11,1.5],
-    [-30,-28,14,1.8],[29,-27,14,1.8]
-  ]) for(let i=0;i<l;i++){
-    const x=cx+(seed()-.5)*d*2,z=cz+(seed()-.5)*3.1;
-    const m=new T.Mesh(b,green[i%green.length]);
-    m.position.set(x,heightAt(x,z)+.34,z);
-    m.scale.set(.37+seed()*.34,.34+seed()*.21,.36+seed()*.30);
+  const foliage=[mat('#658262'),mat('#829978'),mat('#9bad88')];
+  const geo=new T.SphereGeometry(1,10,7);
+  for(const [cx,cz,num,spread] of [
+    [-11,-16,21,1.2],[12,-18,27,1.5],[-10,8,15,1.0],
+    [11,7,14,1.3],[-15,-27,16,1.0]
+  ])for(let i=0;i<num;i++){
+    const x=cx+(seed()-.5)*spread*2,z=cz+(seed()-.5)*5.2;
+    const radius=.24+seed()*.28;
+    const m=new T.Mesh(geo,foliage[(i+Math.floor(seed()*3))%3]);
+    m.position.set(x,heightAt(x,z)+radius*.5,z);
+    m.scale.set(radius*1.7,radius*.8,radius*1.5);
     scene.add(m);
   }
 }
+
 function hills(scene) {
   const backColors=['#9bac98','#819c89','#6d8e7b'];
   const bands=[
@@ -277,7 +346,8 @@ function addLamp(scene,x,z) {
   box(scene,white,x,3.83,z,.62,.12,.62);
   box(scene,mat('#f2e6bf',{emissive:'#b5a17a',emissiveIntensity:.25}),x,3.70,z,.42,.19,.42);
 }
-export function makeCampus(scene,time,compact=false) {
+
+
   const ground=terrain(scene);
   hills(scene);
   lawn(scene);
@@ -313,6 +383,33 @@ export function makeCampus(scene,time,compact=false) {
       for(const t of trees){
         t.canopy.rotation.z=Math.sin(elapsed*.73+t.phase)*t.amount;
         t.canopy.rotation.x=Math.cos(elapsed*.56+t.phase)*t.amount*.66;
+      }
+    }
+  };
+}
+export function makeCampus(scene,time,compact=false) {
+  const ground=terrain(scene);
+  hills(scene);
+  lawn(scene,compact);
+  siteDetails(scene);
+  teacherBuilding(scene);
+  libraryBuilding(scene);
+  benches.forEach(([x,z,a])=>bench(scene,x,z,a));
+  pineSites.forEach(([x,z,size],i)=>umbrellaPine(scene,x,z,size,i));
+  bareSites.forEach(([x,z,size],i)=>bareTree(scene,x,z,size,i));
+  shrubs(scene);
+  for(const [x,z] of [[-12,11.5],[13,11.5],[-11,-24],[13,-24]])addLamp(scene,x,z);
+  const spawnPoints=[
+    {x:-3.8,z:11.8},{x:-1.6,z:11.6},{x:.5,z:11.7},{x:2.7,z:11.5},
+    {x:4.6,z:12},{x:-4.5,z:5.7},{x:5,z:5.3},{x:0,z:4.8}
+  ];
+  return {
+    heightAt,canWalk,spawnPoints,
+    pick(raycaster){return raycaster.intersectObject(ground,false)[0]?.point??null;},
+    update(elapsed) {
+      for(const t of trees){
+        t.canopy.rotation.z=Math.sin(elapsed*.69+t.phase)*t.amount;
+        t.canopy.rotation.x=Math.cos(elapsed*.54+t.phase)*t.amount*.6;
       }
     }
   };
