@@ -139,7 +139,7 @@ const presence = new WebSocketServer({ noServer: true, maxPayload: MAX_STATE_BYT
 let snapshotPending = false;
 
 server.on('upgrade', (req, socket, head) => {
-  if (req.url !== '/presence') {
+  if (new URL(req.url, 'http://localhost').pathname !== '/presence') {
     socket.end('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
     return;
   }
@@ -154,18 +154,20 @@ server.on('upgrade', (req, socket, head) => {
     return;
   }
 
-  presence.handleUpgrade(req, socket, head, ws => presence.emit('connection', ws));
+  presence.handleUpgrade(req, socket, head, ws => presence.emit('connection', ws, req));
 });
 
-presence.on('connection', socket => {
+presence.on('connection', (socket, req) => {
   socket.on('error', () => socket.terminate());
-  if (room.size >= capacity) {
+  const selected = new URL(req.url, 'http://localhost').searchParams.get('map');
+  const mapId = ['hill','campus','beach'].includes(selected) ? selected : 'cliff';
+  if ([...room.values()].filter(peer => peer.mapId === mapId).length >= capacity) {
     send(socket, JSON.stringify({ type: 'full' }));
     socket.close(1013, 'Room full');
     return;
   }
 
-  const peer = { id: randomUUID(), alive: true, lastMessageAt: 0, state: null };
+  const peer = { id: randomUUID(), mapId, alive: true, lastMessageAt: 0, state: null };
   room.set(socket, peer);
   send(socket, JSON.stringify({ type: 'welcome', id: peer.id, capacity }));
 
@@ -202,9 +204,13 @@ presence.on('connection', socket => {
 const snapshots = setInterval(() => {
   if (!snapshotPending) return;
   snapshotPending = false;
-  const players = [...room.values()].flatMap(peer => peer.state ? [peer.state] : []);
-  const message = JSON.stringify({ type: 'snapshot', players });
-  for (const socket of room.keys()) send(socket, message);
+  const groups = new Map();
+  for (const peer of room.values()) {
+    if (!groups.has(peer.mapId)) groups.set(peer.mapId, []);
+    if (peer.state) groups.get(peer.mapId).push(peer.state);
+  }
+  const packets = new Map([...groups].map(([map, players]) => [map, JSON.stringify({ type: 'snapshot', players })]));
+  for (const [socket, peer] of room) send(socket, packets.get(peer.mapId));
 }, 67);
 
 const heartbeat = setInterval(() => {
