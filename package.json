@@ -10,7 +10,9 @@
     "start": "node server.mjs",
     "cloudflare:dev": "wrangler dev",
     "cloudflare:check": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
-    "cloudflare:deploy": "wrangler deploy"
+    "cloudflare:deploy": "wrangler deploy",
+    "check:syntax": "node --check server.mjs && node --check cloudflare/worker.mjs && node --check public/scene.js && node --check public/experience.js && node --check public/render-quality.js",
+    "test": "node --test"
   },
   "dependencies": {
     "ws": "^8.18.0"
