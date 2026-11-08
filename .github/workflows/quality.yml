@@ -1,0 +1,21 @@
+name: Gongang quality checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - quality-pass-1-20261108
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+      - run: npm ci
+      - run: npm run check:syntax
+      - run: npm test
