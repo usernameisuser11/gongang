@@ -346,47 +346,6 @@ function addLamp(scene,x,z) {
   box(scene,white,x,3.83,z,.62,.12,.62);
   box(scene,mat('#f2e6bf',{emissive:'#b5a17a',emissiveIntensity:.25}),x,3.70,z,.42,.19,.42);
 }
-
-
-  const ground=terrain(scene);
-  hills(scene);
-  lawn(scene);
-  teacherBuilding(scene);
-  libraryBuilding(scene);
-  for(const [x,z,a] of benches) bench(scene,x,z,a);
-  treeSites.forEach(([x,z,size],i)=>tree(scene,x,z,size,i));
-  shrubs(scene);
-  for(const [x,z] of [[-10.3,10],[10.3,10],[-10.2,-17],[10.2,-17]]) addLamp(scene,x,z);
-  // Tiny flowers near the lawn's outer corners — no oversized game-like effects.
-  const flowerGeo=new T.SphereGeometry(.045,5,4);
-  const flowers=new T.InstancedMesh(flowerGeo,mat('#eee5c4'),compact?170:320);
-  const dummy=new T.Object3D();
-  for(let i=0;i<flowers.count;i++){
-    const angle=seed()*Math.PI*2;
-    const x=Math.cos(angle)*(9.0+seed()*1.0);
-    const z=-1+Math.sin(angle)*(12.4+seed()*1.8);
-    dummy.position.set(x,.10,z);
-    dummy.scale.setScalar(.72+seed()*.8);
-    dummy.updateMatrix();
-    flowers.setMatrixAt(i,dummy.matrix);
-  }
-  flowers.computeBoundingSphere();
-  scene.add(flowers);
-  const spawnPoints = [
-    {x:-3.7,z:8.1},{x:-2.1,z:9.8},{x:-.4,z:8.0},{x:1.7,z:9.6},
-    {x:3.7,z:8.1},{x:-4.7,z:3.6},{x:4.8,z:3.8},{x:0,z:4.9}
-  ];
-  return {
-    heightAt,canWalk,spawnPoints,
-    pick(raycaster){ return raycaster.intersectObject(ground,false)[0]?.point??null; },
-    update(elapsed){
-      for(const t of trees){
-        t.canopy.rotation.z=Math.sin(elapsed*.73+t.phase)*t.amount;
-        t.canopy.rotation.x=Math.cos(elapsed*.56+t.phase)*t.amount*.66;
-      }
-    }
-  };
-}
 export function makeCampus(scene,time,compact=false) {
   const ground=terrain(scene);
   hills(scene);
