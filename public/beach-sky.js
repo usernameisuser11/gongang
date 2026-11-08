@@ -39,8 +39,9 @@ export function makeBeachSky(scene, time, phase, light) {
         float sunDot = max(0., dot(ray, sun));
         // Wide, layered atmospheric gradient: the horizon is warmer and
         // softer while the upper sky keeps its cool blue depth.
-        vec3 color = mix(horizon, middle, smoothstep(.004, .19, elevation));
-        color = mix(color, zenith, smoothstep(.10, .42, elevation));
+        // Rayleigh-like falloff: a true cool zenith above the golden haze.
+        vec3 color = mix(zenith, middle, exp(-elevation * 8.2));
+        color = mix(color, horizon, exp(-elevation * 27.) * .95);
         float solarAzimuth = max(0., dot(normalize(ray.xz), normalize(sun.xz)));
         float wideGlow = pow(solarAzimuth, 7.) * exp(-elevation * 8.5) * sunVisible;
         color += sunColor * (.065 * wideGlow + .025 * exp(-elevation * 18.) * sunVisible);
@@ -77,13 +78,14 @@ export function makeBeachSky(scene, time, phase, light) {
           * smoothstep(.018, .09, elevation)
           * (1. - smoothstep(.43, .69, elevation));
         float proceduralCover = billows * .57;
-        float cloudCover = clamp(max(proceduralCover,
-          cloudWindow * (firstReady * highDeck.a * .9
-          + secondReady * lowDeck.a * .52)) + lowBank, 0., .86);
-        float sunsetTint = pow(solarAzimuth, 5.) * sunVisible;
-        vec3 shadowCloud = cloud * (.48 + textureLight * .89);
-        vec3 sunlitCloud = mix(shadowCloud,
-          vec3(.87, .82, .75) + sunColor * .09, .48 + .20 * sunsetTint);
+        float cloudCover = clamp(max(proceduralCover * .8,
+          cloudWindow * (firstReady * highDeck.a * .70
+          + secondReady * lowDeck.a * .42)) + lowBank, 0., .72);
+        float sunsetTint = pow(solarAzimuth, 8.) * sunVisible;
+        vec3 shadowCloud = mix(middle, cloud, .43) * (.65 + textureLight * .3);
+        // Only clouds near the sun's azimuth receive a warm golden rim.
+        vec3 sunlitCloud = mix(shadowCloud, sunColor * .75 + middle * .25,
+          .27 * sunsetTint);
         vec3 cloudLight = mix(shadowCloud, sunlitCloud, sunVisible);
         color = mix(color, cloudLight, cloudCover);
         // Low-altitude haze smooths the hard divide between water and sky.
