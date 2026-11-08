@@ -4,6 +4,7 @@ import { addHillDetails } from './hill-detail.js';
 import { HILL_CHECKPOINTS, addHillCommute } from './hill-route.js';
 import { addHillStreetscape, streetSurfaceMaterials } from './hill-streetscape.js';
 import { addLowerHillApproach } from './hill-approach.js';
+import { addGroundCover } from './groundcover.js';
 
 // A painterly reinterpretation of the memorable Sangmyung uphill walk, not a survey map.
 const edgeA = -112, edgeB = 335;
@@ -286,6 +287,18 @@ export function makeHill(scene,time,compact=false) {
   makeRoad(scene);
   // The detailed roadside residences replace the earlier placeholder houses.
   plants(scene,compact);
+  // Short roadside ground cover follows the rising terrain rather than a
+  // floating horizontal plane. Avoid the asphalt, sidewalks and shortcuts.
+  addGroundCover(T,scene,{
+    seed:67211,count:compact?750:1950,bounds:[-58,-89,58,310],
+    allow:(x,z)=>{
+      const s=closestRouteZ(x,z);
+      const d=Math.hypot(x-center(s),z-s);
+      return d>10.5&&d<22&&z>-84&&z<305;
+    },
+    heightAt:groundHeight,
+    colors:['#536a4b','#6d7e55','#83906a','#8c8e66','#a09c75']
+  });
   addHillDetails(scene,{center,heightAt:groundHeight});
   addHillStreetscape(scene,{center,heightAt:groundHeight,compact});
   // The entrance and low-rise street are drawn before the upper landmarks.
