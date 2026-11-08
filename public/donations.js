@@ -66,4 +66,21 @@ export function installDonations(ui) {
     : '후원 링크를 준비하고 있어요. 지금은 송금할 수 없어요.';
   section.append(heading, description, methods, footnote);
   panel.append(section);
+
+  // Make the active KakaoPay method visible without opening settings.
+  // This is still a voluntary external transfer, not an in-app payment.
+  const kakaoUrl = donationLinks.kakaopay;
+  if (isOfficialPaymentLink(kakaoUrl, 'kakaopay')) {
+    const dock = document.createElement('a');
+    dock.className = 'cliff-donate-dock';
+    dock.dataset.donateDock = '';
+    dock.textContent = '♡ 후원하기';
+    dock.href = kakaoUrl.trim();
+    dock.target = '_blank';
+    dock.rel = 'noopener noreferrer external';
+    dock.referrerPolicy = 'no-referrer';
+    dock.setAttribute('aria-label', '카카오페이로 공강 개발 후원하기 · 외부 송금 페이지 열기');
+    dock.title = '카카오페이 송금 페이지 열기';
+    ui.append(dock);
+  }
 }
