@@ -453,3 +453,55 @@
   .cliff-beach .cliff-world { margin-top:6px; }
   .cliff-gather { margin-top:5px;padding:7px 10px;font-size:10px; }
 }
+
+
+/* Quiet Shore v11-inspired 3D beach time scrubber. Keeps characters visible. */
+.beach-timeline {
+  position:fixed;z-index:7;bottom:max(20px,env(safe-area-inset-bottom));
+  left:50%;transform:translateX(-50%);
+  width:min(325px,calc(100vw - 335px));
+  box-sizing:border-box;
+  padding:11px 16px 10px;
+  border:1px solid rgba(248,230,214,.26);
+  border-radius:15px;
+  background:rgba(26,34,48,.62);
+  color:#f8ede5;
+  backdrop-filter:blur(13px);
+  -webkit-backdrop-filter:blur(13px);
+  font:500 11px/1.35 "Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  box-shadow:0 6px 19px rgba(9,16,30,.18);
+}
+.beach-time-head,.beach-time-ends{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.beach-time-head output{font-size:10px;color:#f2d4b4;white-space:nowrap}
+.beach-time-ends{font-size:9px;color:#d6d1d0;letter-spacing:.04em}
+.beach-timeline input{
+  display:block;width:100%;height:16px;margin:6px 0 3px;
+  appearance:none;-webkit-appearance:none;background:transparent;
+  cursor:pointer;touch-action:pan-y;
+}
+.beach-timeline input::-webkit-slider-runnable-track{
+  height:4px;border-radius:8px;
+  background:linear-gradient(90deg,#eeb784,#da93a1 40%,#856aaf 67%,#344c79 100%);
+}
+.beach-timeline input::-moz-range-track{
+  height:4px;border-radius:8px;
+  background:linear-gradient(90deg,#eeb784,#da93a1 40%,#856aaf 67%,#344c79 100%);
+}
+.beach-timeline input::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;margin-top:-5px;
+  border-radius:50%;border:2px solid #f0d7cb;background:#fffbef;
+  box-shadow:0 1px 4px #1118;
+}
+.beach-timeline input::-moz-range-thumb{
+  width:11px;height:11px;border:2px solid #f0d7cb;border-radius:50%;background:#fffbef;
+}
+.beach-timeline input:focus-visible{outline:2px solid #e9cdb7;outline-offset:3px}
+@media(max-width:760px){
+  .beach-timeline{
+    left:12px;right:12px;transform:none;width:auto;
+    bottom:calc(max(12px,env(safe-area-inset-bottom)) + 72px);
+    padding:9px 12px;
+  }
+}
