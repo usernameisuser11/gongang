@@ -1,0 +1,59 @@
+/* Optional support lives inside the existing settings panel, never in the 3D view. */
+.cliff-donate {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 239, 216, .19);
+}
+.cliff-donate h3 {
+  margin: 0 0 7px;
+  color: #ffe5b7;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+.cliff-donate p {
+  margin: 0 0 12px;
+  color: var(--cliff-muted);
+  font-size: 11px;
+  line-height: 1.65;
+  word-break: keep-all;
+}
+.cliff-donate-methods {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.cliff-donate-method {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid rgba(255, 234, 192, .38);
+  border-radius: 10px;
+  background: rgba(75, 66, 52, .78);
+  color: #fff4e3;
+  text-decoration: none;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+a.cliff-donate-method:hover,
+a.cliff-donate-method:focus-visible {
+  border-color: #f7d59b;
+  background: rgba(106, 88, 61, .9);
+  outline-color: #f7d59b;
+}
+.cliff-donate-unavailable {
+  background: rgba(71, 71, 68, .32);
+  color: #b4ada3;
+  cursor: not-allowed;
+  opacity: .72;
+}
+.cliff-donate-note {
+  display: block;
+  margin-top: 9px;
+  color: var(--cliff-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
